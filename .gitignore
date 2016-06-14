@@ -35,3 +35,6 @@ TAGS
 
 build-dir/
 build/
+*.DS_Store
+*xcshareddata
+*xcuserdata
