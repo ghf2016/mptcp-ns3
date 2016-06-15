@@ -101,6 +101,7 @@ TcpOption::IsKindKnown (uint8_t kind)
     case MSS:
     case WINSCALE:
     case TS:
+    case MPTCP:
     // Do not add UNKNOWN here
       return true;
     }

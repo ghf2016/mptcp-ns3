@@ -60,8 +60,9 @@ public:
   /**
    * \brief Constructs a SequenceNumber with the given value
    * \param value the sequence number value
-   */ 
-  explicit SequenceNumber (NUMERIC_TYPE value)
+   */
+  template<typename NUMERIC_TYPE2>
+  explicit SequenceNumber (NUMERIC_TYPE2 value)
     : m_value (value)
   {}
 
@@ -69,8 +70,9 @@ public:
    * \brief Constructs a SequenceNumber from a copy
    * \param value sequence number to copy
    */
-  SequenceNumber (SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> const &value)
-    : m_value (value.m_value)
+  template<typename NUMERIC_TYPE2, typename SIGNED_TYPE2>
+  SequenceNumber (SequenceNumber<NUMERIC_TYPE2, SIGNED_TYPE2> const &value)
+    : m_value (value.GetValue())
   {}
 
   /**
@@ -466,6 +468,12 @@ std::istream & operator >> (std::istream &is, const SequenceNumber<NUMERIC_TYPE,
   return is;
 }
 
+/**
+ * \ingroup network
+ * 64 bit Sequence number.
+ */
+typedef SequenceNumber<uint64_t, int64_t> SequenceNumber64;
+  
 /**
  * \ingroup network
  * 32 bit Sequence number.

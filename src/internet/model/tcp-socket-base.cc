@@ -3354,7 +3354,7 @@ TcpSocketBase::AddOptionTimestamp (TcpHeader& header)
                option->GetTimestamp () << " echo=" << m_timestampToEcho);
 }
 
-void TcpSocketBase::UpdateWindowSize (const TcpHeader &header)
+bool TcpSocketBase::UpdateWindowSize (const TcpHeader &header)
 {
   NS_LOG_FUNCTION (this << header);
   //  If the connection is not established, the window size is always
@@ -3366,7 +3366,7 @@ void TcpSocketBase::UpdateWindowSize (const TcpHeader &header)
     {
       m_rWnd = receivedWindow;
       NS_LOG_LOGIC ("State less than ESTABLISHED; updating rWnd to " << m_rWnd);
-      return;
+      return true;
     }
 
   // Test for conditions that allow updating of the window
@@ -3396,6 +3396,7 @@ void TcpSocketBase::UpdateWindowSize (const TcpHeader &header)
       m_rWnd = receivedWindow;
       NS_LOG_LOGIC ("updating rWnd to " << m_rWnd);
     }
+  return update;
 }
 
 void

@@ -307,6 +307,11 @@ public:
    * \param rtt the RTT estimator
    */
   virtual void SetRtt (Ptr<RttEstimator> rtt);
+  
+  /**
+   * \brief Get the last estimated RTT value.
+   */
+  Time GetLastRttEstimate (void) const;
 
   /**
    * \brief Sets the Minimum RTO.
@@ -801,7 +806,7 @@ protected:
    *
    * \param header TcpHeader from which to extract the new window value
    */
-  void UpdateWindowSize (const TcpHeader& header);
+  virtual bool UpdateWindowSize (const TcpHeader& header);
 
 
   // Manage data tx/rx
@@ -1014,6 +1019,10 @@ protected:
 
   bool     m_timestampEnabled;    //!< Timestamp option enabled
   uint32_t m_timestampToEcho;     //!< Timestamp to echo
+  
+  bool        m_mptcpEnabled;         //!< MPTCP option enabled
+  uint64_t    m_mptcpLocalKey;        //!< MPTCP key
+  uint32_t    m_mptcpLocalToken;      //!< Hash of the MPTCP key
 
   EventId m_sendPendingDataEvent; //!< micro-delay event to send pending data
 

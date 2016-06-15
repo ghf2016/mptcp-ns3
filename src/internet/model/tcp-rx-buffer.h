@@ -71,6 +71,18 @@ public:
    * \brief Set the Next Sequence number
    * \param s the Sequence number
    */
+  
+  /**
+   * \brief Returns the lowest sequence number in the TcpRxBuffer
+   * \return First in order sequence sumber
+   *
+   **/
+  SequenceNumber32 HeadSequence(void) const;
+  
+  
+  void Dump() const;
+
+  
   void SetNextRxSequence (const SequenceNumber32& s);
   /**
    * \brief Set the FIN Sequence number (i.e., the one closing the connection)

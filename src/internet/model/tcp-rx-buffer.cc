@@ -105,6 +105,25 @@ TcpRxBuffer::IncNextRxSequence ()
   NS_ASSERT (m_size == 0);
   m_nextRxSeq++;
 }
+  
+SequenceNumber32
+TcpRxBuffer::HeadSequence(void) const
+{
+  return NextRxSequence() - Available();
+}
+
+void
+TcpRxBuffer::Dump() const
+{
+  NS_LOG_DEBUG("=== Dumping content of RxBuffer");
+  NS_LOG_DEBUG("> nextRxSeq=" << m_nextRxSeq << " Occupancy=" << m_size);
+  std::map<SequenceNumber32, Ptr<Packet> >::const_iterator i = m_data.begin ();
+  for( ; i != m_data.end (); ++i)
+  {
+    NS_LOG_DEBUG( "head:" << i->first << " of size:" << i->second->GetSize());
+  }
+  NS_LOG_DEBUG("=== End of dump");
+}
 
 // Return the lowest sequence number that this TcpRxBuffer cannot accept
 SequenceNumber32
