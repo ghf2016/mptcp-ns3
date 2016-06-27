@@ -274,6 +274,12 @@ MpTcpSubflow::MpTcpSubflow(const TcpSocketBase& sock)
     m_endPoint6 = (sock.m_endPoint6);
     SetupCallback();
 //    NS_ASSERT(res == 0);
+  
+  //Need to zero out the tx and rx buffers
+  m_rxBuffer = CreateObject<TcpRxBuffer> ();
+  m_rxBuffer->SetMaxBufferSize(sock.GetRcvBufSize());
+  m_txBuffer = CreateObject<TcpTxBuffer> ();
+  m_txBuffer->SetMaxBufferSize(sock.GetSndBufSize());
 }
 
 
