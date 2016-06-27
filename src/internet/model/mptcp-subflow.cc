@@ -1687,7 +1687,7 @@ MpTcpSubflow::UpdateWindowSize(const TcpHeader& header)
     bool updated = TcpSocketBase::UpdateWindowSize(header);
     if(updated)
     {
-        GetMeta()->UpdateWindowSize(header);
+        GetMeta()->UpdateWindowSize(m_rWnd);
     }
     return updated;
 }

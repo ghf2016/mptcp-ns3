@@ -447,17 +447,16 @@ MpTcpSocketBase::ReceivedData(Ptr<Packet> p, const TcpHeader& mptcpHeader)
   // Does nothing
   NS_FATAL_ERROR("Disabled");
 }
-
+  
 bool
-MpTcpSocketBase::UpdateWindowSize(const TcpHeader& header)
+MpTcpSocketBase::UpdateWindowSize(uint32_t windowSize)
 {
   //!
   NS_LOG_FUNCTION(this);
-  m_rWnd = header.GetWindowSize();
+  m_rWnd = windowSize;
   NS_LOG_DEBUG("Meta Receiver window=" << m_rWnd);
   return true;
 }
-
 
 /*
 A receiver MUST NOT shrink the right edge of the receive window (i.e.,
