@@ -671,6 +671,7 @@
 		ED8883761CED105500EDA1E9 /* libnetwork.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CEC71605138600ECD480 /* libnetwork.dylib */; };
 		ED8883771CED105500EDA1E9 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
 		ED91DA761D2167E200A69097 /* mptcp-socket-base.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E631D10A05B00F0C233 /* mptcp-socket-base.cc */; };
+		ED91DA781D217C3700A69097 /* mptcp-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED91DA771D217C1700A69097 /* mptcp-test.cc */; };
 		EDC7CECD1605139B00ECD480 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
 		EDC7CF3B1605175100ECD480 /* libnetwork.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CEC71605138600ECD480 /* libnetwork.dylib */; };
 		EDC7CF501605184F00ECD480 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
@@ -695,7 +696,6 @@
 		EDE46A1F1C7609A400BE8119 /* tcp-bidirectional-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDE46A1E1C7609A400BE8119 /* tcp-bidirectional-test.cc */; };
 		EDEB0E311D108CEB00F0C233 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = EDEB0E301D108CEB00F0C233 /* libsqlite3.tbd */; };
 		EDEB0E6B1D10A05B00F0C233 /* mptcp-cc-coupled.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E4F1D10A05B00F0C233 /* mptcp-cc-coupled.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		EDEB0E6F1D10A05B00F0C233 /* mptcp-cc-uncoupled.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E531D10A05B00F0C233 /* mptcp-cc-uncoupled.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E711D10A05B00F0C233 /* mptcp-crypto.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E551D10A05B00F0C233 /* mptcp-crypto.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E731D10A05B00F0C233 /* mptcp-id-manager-impl.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E571D10A05B00F0C233 /* mptcp-id-manager-impl.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E751D10A05B00F0C233 /* mptcp-id-manager.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E591D10A05B00F0C233 /* mptcp-id-manager.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -3965,6 +3965,7 @@
 		ED7C6B36199D00A5009165B6 /* core-config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "core-config.h"; path = "../build/ns3/core-config.h"; sourceTree = "<group>"; };
 		ED7C6B37199D00A5009165B6 /* core-module.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "core-module.h"; path = "../build/ns3/core-module.h"; sourceTree = "<group>"; };
 		ED88837D1CED105500EDA1E9 /* background */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = background; sourceTree = BUILT_PRODUCTS_DIR; };
+		ED91DA771D217C1700A69097 /* mptcp-test.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = "mptcp-test.cc"; path = "../mptcp-test.cc"; sourceTree = "<group>"; };
 		EDC7CEC71605138600ECD480 /* libnetwork.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libnetwork.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDC7CF4A1605183B00ECD480 /* libpropagation.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libpropagation.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDC7CF69160518E300ECD480 /* libmobility.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libmobility.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -4051,12 +4052,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ED112DDE1C17328C0036CB90 /* libcore.dylib in Frameworks */,
+				ED112DDD1C17328C0036CB90 /* libnetwork.dylib in Frameworks */,
+				ED112DDB1C17328C0036CB90 /* libinternet.dylib in Frameworks */,
 				ED4DB84D1D081DEB00635C71 /* libtraffic-control.dylib in Frameworks */,
 				ED112DDA1C17328C0036CB90 /* libapplications.dylib in Frameworks */,
-				ED112DDB1C17328C0036CB90 /* libinternet.dylib in Frameworks */,
 				ED112DDC1C17328C0036CB90 /* libpoint2point.dylib in Frameworks */,
-				ED112DDD1C17328C0036CB90 /* libnetwork.dylib in Frameworks */,
-				ED112DDE1C17328C0036CB90 /* libcore.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -9684,6 +9685,7 @@
 		ED7C6D2D199E330E009165B6 /* run */ = {
 			isa = PBXGroup;
 			children = (
+				ED91DA771D217C1700A69097 /* mptcp-test.cc */,
 			);
 			name = run;
 			sourceTree = "<group>";
@@ -9876,7 +9878,6 @@
 				ED7C6B9A199D07B5009165B6 /* radiotap-header.h in Headers */,
 				ED0494391C6B835400979159 /* sll-header.h in Headers */,
 				ED7C6B9C199D07B6009165B6 /* sequence-number.h in Headers */,
-				EDEB0E6F1D10A05B00F0C233 /* mptcp-cc-uncoupled.h in Headers */,
 				ED7C6B9D199D07B6009165B6 /* sgi-hashmap.h in Headers */,
 				EDEB0E7D1D10A05B00F0C233 /* mptcp-scheduler-round-robin.h in Headers */,
 				ED7C6B9E199D07B6009165B6 /* simple-channel.h in Headers */,
@@ -10231,11 +10232,11 @@
 			buildRules = (
 			);
 			dependencies = (
+				ED112DD01C17328C0036CB90 /* PBXTargetDependency */,
+				ED112DCE1C17328C0036CB90 /* PBXTargetDependency */,
 				ED4DB84F1D081DF300635C71 /* PBXTargetDependency */,
 				ED112DCA1C17328C0036CB90 /* PBXTargetDependency */,
 				ED112DCC1C17328C0036CB90 /* PBXTargetDependency */,
-				ED112DCE1C17328C0036CB90 /* PBXTargetDependency */,
-				ED112DD01C17328C0036CB90 /* PBXTargetDependency */,
 			);
 			name = test_tcp_params;
 			productName = testjson;
@@ -10585,6 +10586,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ED91DA781D217C3700A69097 /* mptcp-test.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

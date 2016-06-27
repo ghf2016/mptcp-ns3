@@ -22,7 +22,7 @@
 
 #include "ns3/object.h"
 #include "ns3/traced-value.h"
-#include <ns3/queue.h>
+#include "ns3/queue.h"
 #include "ns3/net-device.h"
 #include <vector>
 #include "packet-filter.h"
