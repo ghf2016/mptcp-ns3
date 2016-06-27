@@ -63,7 +63,7 @@ public:
    */
   template<typename NUMERIC_TYPE2>
   explicit SequenceNumber (NUMERIC_TYPE2 value)
-    : m_value (value)
+    : m_value (NUMERIC_TYPE(value))
   {}
 
   /**

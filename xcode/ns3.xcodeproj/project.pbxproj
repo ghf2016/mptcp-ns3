@@ -670,6 +670,7 @@
 		ED8883751CED105500EDA1E9 /* libpoint2point.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = ED3D40331694646400520C4E /* libpoint2point.dylib */; };
 		ED8883761CED105500EDA1E9 /* libnetwork.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CEC71605138600ECD480 /* libnetwork.dylib */; };
 		ED8883771CED105500EDA1E9 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
+		ED91DA761D2167E200A69097 /* mptcp-socket-base.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E631D10A05B00F0C233 /* mptcp-socket-base.cc */; };
 		EDC7CECD1605139B00ECD480 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
 		EDC7CF3B1605175100ECD480 /* libnetwork.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CEC71605138600ECD480 /* libnetwork.dylib */; };
 		EDC7CF501605184F00ECD480 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
@@ -713,7 +714,6 @@
 		EDEB0E8B1D10A0E800F0C233 /* mptcp-id-manager.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E581D10A05B00F0C233 /* mptcp-id-manager.cc */; };
 		EDEB0E8D1D10A0E800F0C233 /* mptcp-mapping.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E5C1D10A05B00F0C233 /* mptcp-mapping.cc */; };
 		EDEB0E8F1D10A0E800F0C233 /* mptcp-scheduler-round-robin.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E601D10A05B00F0C233 /* mptcp-scheduler-round-robin.cc */; };
-		EDEB0E901D10A0E800F0C233 /* mptcp-socket-base.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E631D10A05B00F0C233 /* mptcp-socket-base.cc */; };
 		EDEB0E911D10A0E800F0C233 /* mptcp-subflow.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E661D10A05B00F0C233 /* mptcp-subflow.cc */; };
 		EDEB0E921D10A0E800F0C233 /* tcp-option-mptcp.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E681D10A05B00F0C233 /* tcp-option-mptcp.cc */; };
 		EDEB0E931D11A17700F0C233 /* mptcp-scheduler-fastest-rtt.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E5E1D10A05B00F0C233 /* mptcp-scheduler-fastest-rtt.cc */; };
@@ -10775,9 +10775,9 @@
 				ED7C6C3B199D2257009165B6 /* ipv6-option-header.cc in Sources */,
 				ED7C6C3A199D2257009165B6 /* ipv6-option-demux.cc in Sources */,
 				ED7C6C2A199D2257009165B6 /* icmpv6-l4-protocol.cc in Sources */,
-				EDEB0E901D10A0E800F0C233 /* mptcp-socket-base.cc in Sources */,
 				ED7C6C1D199D201B009165B6 /* tcp-socket-base.cc in Sources */,
 				ED05A68E1C986F2A0008E602 /* rip-header.cc in Sources */,
+				ED91DA761D2167E200A69097 /* mptcp-socket-base.cc in Sources */,
 				ED7C6C22199D201B009165B6 /* tcp-westwood.cc in Sources */,
 				ED7C6C1C199D201B009165B6 /* tcp-rx-buffer.cc in Sources */,
 				ED7C6C21199D201B009165B6 /* tcp-tx-buffer.cc in Sources */,
@@ -12231,6 +12231,7 @@
 				EDEB0E351D10960E00F0C233 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

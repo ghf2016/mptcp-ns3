@@ -253,7 +253,7 @@ MpTcpSubflow::Close(void)
 /*
 If copied from a legacy socket, then it's a master socket
 */
-/*MpTcpSubflow::MpTcpSubflow(const TcpSocketBase& sock)
+MpTcpSubflow::MpTcpSubflow(const TcpSocketBase& sock)
     : TcpSocketBase(sock),
     m_dssFlags(0),
     m_masterSocket(true)
@@ -274,7 +274,7 @@ If copied from a legacy socket, then it's a master socket
     m_endPoint6 = (sock.m_endPoint6);
     SetupCallback();
 //    NS_ASSERT(res == 0);
-}*/
+}
 
 
 // Does this constructor even make sense ? no ? to remove ?
@@ -936,7 +936,7 @@ MpTcpSubflow::DeallocateEndPoint(void)
 
 
 void
-MpTcpSubflow::CompleteFork(Ptr<const Packet> p, const TcpHeader& h, const Address& fromAddress, const Address& toAddress)
+MpTcpSubflow::CompleteFork(Ptr<Packet> p, const TcpHeader& h, const Address& fromAddress, const Address& toAddress)
 {
   NS_LOG_INFO( this << "Completing fork of MPTCP subflow");
 

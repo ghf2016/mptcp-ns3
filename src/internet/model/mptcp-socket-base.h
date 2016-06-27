@@ -683,7 +683,7 @@ protected: // protected methods
    *  inherited from parent: update buffers
    * @brief Called from subflows when they receive DATA-ACK. For now calls parent fct
    */
-  virtual void NewAck(SequenceNumber32 const& dataLevelSeq);
+  virtual void NewAck(SequenceNumber32 const& dataLevelSeq, bool resetRTO);
 
   //! disabled
   virtual void SendEmptyPacket(TcpHeader& header);
@@ -718,13 +718,11 @@ protected: // protected variables
   to any Ipv4endpoint. Thus twe create one.
   **/
   virtual Ipv4EndPoint*
-  NewSubflowRequest(
-    Ptr<const Packet> p,
-    const TcpHeader & header,
-    const Address & fromAddress,
-    const Address & toAddress,
-    Ptr<const TcpOptionMpTcpJoin> join
-  );
+  NewSubflowRequest(Ptr<Packet> p,
+                    const TcpHeader & header,
+                    const Address & fromAddress,
+                    const Address & toAddress,
+                    Ptr<const TcpOptionMpTcpJoin> join);
 
   // ?
 //  int CloseSubflow(Ptr<MpTcpSubflow> sf);

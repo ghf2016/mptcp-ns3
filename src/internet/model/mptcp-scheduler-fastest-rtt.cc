@@ -77,11 +77,10 @@ MpTcpSchedulerFastestRTT::FindFastestSubflowWithFreeWindow() const
       continue;
     }
     
-    Time lastRttEstimate = sf->GetLastRttEstimate ();
-    if(lastRttEstimate < lowestEstimate)
+    if(sf->GetRttEstimator()->GetEstimate () < lowestEstimate)
     {
       //!
-      lowestEstimate = lastRttEstimate;
+      lowestEstimate = sf->GetRttEstimator()->GetEstimate ();
       id = i;
     }
   }

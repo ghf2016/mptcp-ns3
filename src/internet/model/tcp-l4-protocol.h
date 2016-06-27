@@ -40,6 +40,7 @@ class Ipv4Interface;
 class TcpSocketBase;
 class Ipv4EndPoint;
 class Ipv6EndPoint;
+class TcpCongestionOps;
 
 /**
  * \ingroup tcp
@@ -88,6 +89,11 @@ public:
    * of the TCP protocol
    */
   Ptr<Socket> CreateSocket (void);
+  
+  Ptr<Socket> CreateSocket (TypeId congestionTypeId, TypeId socketTypeId);
+  Ptr<Socket> CreateSocket (Ptr<TcpCongestionOps> algo, TypeId socketTypeId);
+  
+  void DumpSockets () const;
 
   /**
    * \brief Create a TCP socket using the specified congestion control algorithm TypeId
@@ -169,6 +175,11 @@ public:
    */
   Ipv6EndPoint *Allocate6 (Ipv6Address localAddress, uint16_t localPort,
                            Ipv6Address peerAddress, uint16_t peerPort);
+  
+  /**
+   *
+   */
+  Ptr<TcpSocketBase> LookupMpTcpToken (uint32_t token);
 
   /**
    * \brief Send a packet via TCP (IP-agnostic)
@@ -190,7 +201,7 @@ public:
    *
    * \param socket Socket to be added
    */
-  void AddSocket (Ptr<TcpSocketBase> socket);
+  bool AddSocket (Ptr<TcpSocketBase> socket);
 
   /**
    * \brief Remove a socket from the internal list
@@ -280,6 +291,7 @@ protected:
 
 private:
   Ptr<Node> m_node;                //!< the node this stack is associated with
+  bool m_mptcpEnabled;             //!< Mptcp option enabled
   Ipv4EndPointDemux *m_endPoints;  //!< A list of IPv4 end points.
   Ipv6EndPointDemux *m_endPoints6; //!< A list of IPv6 end points.
   TypeId m_rttTypeId;              //!< The RTT Estimator TypeId

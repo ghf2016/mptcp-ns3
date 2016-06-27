@@ -112,6 +112,8 @@ private:
   template <typename U>
   friend U *PeekPointer (const Ptr<U> &p);
 
+public:
+  //TODO: this was changed for MPTCP
   /** Mark this as a a reference by incrementing the reference count. */
   inline void Acquire (void) const;
   

@@ -126,7 +126,7 @@ public:
    * \param tcph packet's TCP header
    * \return True when success, false otherwise.
    */
-  bool Add (Ptr<Packet> p, TcpHeader const& tcph);
+  bool Add (Ptr<Packet> p, SequenceNumber32 headSeq);
 
   /**
    * Extract data from the head of the buffer as indicated by nextRxSeq.

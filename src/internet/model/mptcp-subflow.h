@@ -298,7 +298,7 @@ TODO move this up to TcpSocketBase
    *
    * \see TcpSocketBase::CompleteFork
    */
-  virtual void CompleteFork(Ptr<const Packet> p, const TcpHeader& h, const Address& fromAddress, const Address& toAddress);
+  virtual void CompleteFork(Ptr<Packet> p, const TcpHeader& h, const Address& fromAddress, const Address& toAddress);
 
   virtual void ProcessSynRcvd(Ptr<Packet> packet, const TcpHeader& tcpHeader, const Address& fromAddress,
     const Address& toAddress);

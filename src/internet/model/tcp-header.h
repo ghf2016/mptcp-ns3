@@ -184,7 +184,16 @@ public:
    * \return Whether the header contains a specific kind of option, or 0
    */
   Ptr<TcpOption> GetOption (uint8_t kind) const;
+  
+  typedef std::list< Ptr<TcpOption> > TcpOptionList; //!< List of TcpOption
 
+  /**
+   * \brief Copy all options in a list
+   * \note The list should be empty
+   * \param options Return a copy of the options
+   */
+  void GetOptions (TcpHeader::TcpOptionList& options) const;
+  
   /**
    * \brief Get the total length of appended options
    * \return the total length of options appended to this TcpHeader
@@ -341,11 +350,34 @@ private:
   bool m_goodChecksum;    //!< Flag to indicate that checksum is correct
 
   static const uint8_t m_maxOptionsLen = 40;         //!< Maximum options length
-  typedef std::list< Ptr<TcpOption> > TcpOptionList; //!< List of TcpOption
   TcpOptionList m_options;     //!< TcpOption present in the header
   uint8_t m_optionsLen;        //!< Tcp options length.
 };
 
+/**
+ * \brief Helper function to find an MPTCP option
+ *
+ * \param ret save found option in ret, otherwise
+ * \return true if matching option type found. If false, ret should be considered invalid
+ */
+template<class T>
+bool
+GetTcpOption (const TcpHeader& header, Ptr<const T>& ret)
+{
+  TcpHeader::TcpOptionList l;
+  header.GetOptions (l);
+  for (TcpHeader::TcpOptionList::const_iterator it = l.begin (); it != l.end (); ++it)
+  {
+    //      std::cout << "comparing " << ((*it)->GetInstanceTypeId ().GetName())
+    //                    << " with " << T::GetTypeId().GetName();
+    if ( (*it)->GetInstanceTypeId () == T::GetTypeId())
+    {
+      ret = DynamicCast<const T> ( *it );
+      return (ret != 0);
+    }
+  }
+  return false;
+}
 } // namespace ns3
 
 #endif /* TCP_HEADER */

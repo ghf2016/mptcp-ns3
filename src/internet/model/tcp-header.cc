@@ -25,6 +25,7 @@
 #include "ns3/buffer.h"
 #include "ns3/address-utils.h"
 #include "ns3/log.h"
+#include "tcp-option-mptcp.h"
 
 namespace ns3 {
 
@@ -384,7 +385,14 @@ TcpHeader::Deserialize (Buffer::Iterator start)
       uint8_t kind = i.PeekU8 ();
       Ptr<TcpOption> op;
       uint32_t optionSize;
-      if (TcpOption::IsKindKnown (kind))
+      if( kind == TcpOption::MPTCP)
+      {
+        i.ReadU16(); // skip TCP kind & length
+        uint8_t subtype = i.ReadU8() >> 4;  // read MPTCP subtype
+        i.Prev(3); // revert the iterator back to where it should be
+        op = TcpOptionMpTcpMain::CreateMpTcpOption(subtype);
+      }
+      else if (TcpOption::IsKindKnown (kind))
         {
           op = TcpOption::CreateOption (kind);
         }
@@ -498,6 +506,12 @@ TcpHeader::GetOption (uint8_t kind) const
   return 0;
 }
 
+void
+TcpHeader::GetOptions (TcpHeader::TcpOptionList& l) const
+{
+  l = m_options;
+}
+  
 bool
 TcpHeader::HasOption (uint8_t kind) const
 {

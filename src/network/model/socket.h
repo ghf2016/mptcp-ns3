@@ -968,7 +968,7 @@ protected:
   bool m_recvPktInfo; //!< if the socket should add packet info tags to the packet forwarded to L4.
   Ipv6Address m_ipv6MulticastGroupAddress; //!< IPv6 multicast group address.
 
-private:
+protected:
   Callback<void, Ptr<Socket> >                   m_connectionSucceeded;  //!< connection succeeded callback
   Callback<void, Ptr<Socket> >                   m_connectionFailed;     //!< connection failed callback
   Callback<void, Ptr<Socket> >                   m_normalClose;          //!< connection closed callback

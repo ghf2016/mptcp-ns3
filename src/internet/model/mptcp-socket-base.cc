@@ -35,8 +35,6 @@
 #include "ns3/tcp-l4-protocol.h"
 #include "ns3/ipv4-l3-protocol.h"
 #include "ns3/error-model.h"
-#include "ns3/point-to-point-channel.h"
-#include "ns3/point-to-point-net-device.h"
 #include "ns3/pointer.h"
 #include "ns3/drop-tail-queue.h"
 #include "ns3/object-vector.h"
@@ -47,6 +45,7 @@
 #include "ns3/tcp-option-mptcp.h"
 #include "ns3/callback.h"
 #include "ns3/trace-helper.h"
+#include "tcp-congestion-ops.h"
 
 
 using namespace std;
@@ -1062,13 +1061,11 @@ MpTcpSocketBase::CreateSubflowAndCompleteFork(
 #endif
 
 Ipv4EndPoint*
-MpTcpSocketBase::NewSubflowRequest(
-Ptr<const Packet> p,
-const TcpHeader & tcpHeader,
-const Address & fromAddress,
-const Address & toAddress,
-Ptr<const TcpOptionMpTcpJoin> join
-)
+MpTcpSocketBase::NewSubflowRequest(Ptr<Packet> p,
+                                   const TcpHeader & tcpHeader,
+                                   const Address & fromAddress,
+                                   const Address & toAddress,
+                                   Ptr<const TcpOptionMpTcpJoin> join)
 {
   NS_LOG_LOGIC("Received request for a new subflow while in state " << TcpStateName[m_state]);
   NS_ASSERT_MSG(InetSocketAddress::IsMatchingType(fromAddress) && InetSocketAddress::IsMatchingType(toAddress),
@@ -1081,7 +1078,7 @@ Ptr<const TcpOptionMpTcpJoin> join
 
 
 //  check we can accept the creation of a new subflow (did we receive a DSS already ?)
-  if( !FullyEstablished() )
+  if(!FullyEstablished())
   {
     NS_LOG_WARN("Received an MP_JOIN while meta not fully established yet.");
     return 0;
@@ -1261,7 +1258,7 @@ only permissible to combine these signals on one subflow if there is
 no data outstanding on other subflows.
 */
 void
-MpTcpSocketBase::PeerClose( SequenceNumber32 dsn, Ptr<MpTcpSubflow> sf)
+MpTcpSocketBase::PeerClose (SequenceNumber32 dsn, Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_LOGIC("Datafin with seq=" << dsn);
 
@@ -1397,7 +1394,7 @@ MpTcpSocketBase::SyncTxBuffers()
       return;
     }
 
-  // Partie que j'ai ajoutée to help closing the connection
+  // Added to help closing the connection
   // maybe remove some of it
   if (m_txBuffer->Size() == 0)
     {
@@ -1464,6 +1461,7 @@ MpTcpSocketBase::SyncTxBuffers(Ptr<MpTcpSubflow> subflow)
     DiscardUpTo  Discard data up to but not including this sequence number.
     */
     m_txBuffer->DiscardUpTo( SEQ64TO32(mapping.TailDSN()) + SequenceNumber32(1));
+    m_firstTxUnack = m_txBuffer->HeadSequence();
   }
 }
 
@@ -1497,11 +1495,11 @@ MpTcpSocketBase::UpdateTxBuffer()
 This should take care of ReTxTimeout
 */
 void
-MpTcpSocketBase::NewAck(SequenceNumber32 const& dsn)
+MpTcpSocketBase::NewAck(SequenceNumber32 const& dsn,  bool resetRTO)
 {
   NS_LOG_FUNCTION(this << " new dataack=[" <<  dsn << "]");
 
-  TcpSocketBase::NewAck(dsn);
+  TcpSocketBase::NewAck(dsn, resetRTO);
 
   #if 0
 
@@ -1676,19 +1674,19 @@ MpTcpSocketBase::SendPendingData(bool withAck)
       receiver but to do that we need SACK support (IMO). Once SACK is implemented it should
       be reasonably easy to add
       */
-      NS_ASSERT(dsnHead == m_tcb->m_nextTxSequence.Get());
+      NS_ASSERT(dsnHead == m_tcb->m_nextTxSequence);
       //TODO update m_nextTx / txmark
       //  // TODO here update the m_nextTxSequence only if it is in order
       //      // Maybe the max is unneeded; I put it here
-      SequenceNumber64 nextTxSeq = SEQ32TO64(m_tcb->m_nextTxSequence.Get());
+      SequenceNumber64 nextTxSeq = SEQ32TO64(m_tcb->m_nextTxSequence);
       if( dsnHead <= nextTxSeq
           && (dsnTail) >= nextTxSeq )
       {
         m_tcb->m_nextTxSequence = dsnTail;
       }
 
-      m_highTxMark = std::max( m_highTxMark.Get(), dsnTail);
-      NS_LOG_LOGIC("m_nextTxSequence=" << m_nextTxSequence << " m_highTxMark=" << m_highTxMark);
+      m_tcb->m_highTxMark = std::max(m_tcb->m_highTxMark.Get(), dsnTail);
+      NS_LOG_LOGIC("m_nextTxSequence=" << m_tcb->m_nextTxSequence << " m_highTxMark=" << m_tcb->m_highTxMark);
   }
 
 
@@ -1822,7 +1820,7 @@ MpTcpSocketBase::SendPendingData(bool withAck)
 
 
 
-  uint32_t remainingData = m_txBuffer->SizeFromSequence(m_nextTxSequence );
+  uint32_t remainingData = m_txBuffer->SizeFromSequence(m_tcb->m_nextTxSequence);
 
   if (m_closeOnEmpty && (remainingData == 0))
     {
@@ -2071,7 +2069,7 @@ MpTcpSocketBase::Retransmit()
   NS_LOG_LOGIC(this);
 //  NS_FATAL_ERROR("TODO reestablish retransmit ?");
 //  NS_LOG_ERROR("TODO");
-  m_nextTxSequence = FirstUnackedSeq(); // Start from highest Ack
+  m_tcb->m_nextTxSequence = FirstUnackedSeq(); // Start from highest Ack
 //  m_rtt->IncreaseMultiplier(); // Double the timeout value for next retx timer
   m_dupAckCount = 0;
   DoRetransmit(); // Retransmit the packet
@@ -2089,10 +2087,11 @@ MpTcpSocketBase::DoRetransmit()
   // Retransmit SYN packet
   if (m_state == SYN_SENT)
     {
-      if (m_cnCount > 0)
+      //TODO: is this check right?
+      if (m_synCount > 0)
         {
           // TODO
-          NS_FATAL_ERROR("TODO, first syn didn't reach it should be resent. Maybe this shoudl be let to the subflow");
+          NS_FATAL_ERROR("TODO, first syn didn't reach it should be resent. Maybe this should be let to the subflow");
 //          SendEmptyPacket(TcpHeader::SYN);
         }
       else
@@ -2664,7 +2663,7 @@ MpTcpSocketBase::ReceivedAck(
     }
   else if (dack  == FirstUnackedSeq())
     { // Case 2: Potentially a duplicated ACK
-      if (dack  < m_nextTxSequence && count_dupacks)
+      if (dack  < m_tcb->m_nextTxSequence && count_dupacks)
         {
         /* TODO dupackcount shall only be increased if there is only a DSS option ! */
 //          NS_LOG_WARN ("TODO Dupack of " << dack << " not handled yet." );
@@ -2673,13 +2672,13 @@ MpTcpSocketBase::ReceivedAck(
 //            DupAck(dack, sf, ++m_dupAckCount);
         }
       // otherwise, the ACK is precisely equal to the nextTxSequence
-      NS_ASSERT( dack  <= m_nextTxSequence);
+      NS_ASSERT( dack  <= m_tcb->m_nextTxSequence);
     }
   else if (dack  > FirstUnackedSeq())
     { // Case 3: New ACK, reset m_dupAckCount and update m_txBuffer
       NS_LOG_LOGIC ("New DataAck [" << dack  << "]");
 
-      NewAck( dack );
+      NewAck(dack, true);
       m_dupAckCount = 0;
     }
 

@@ -20,7 +20,7 @@
  */
 
 #define NS_LOG_APPEND_CONTEXT \
-  if (m_node) { std::clog << " [node " << m_node->GetId () << "] "; }
+  if (m_node) { std::clog << Simulator::Now ().GetSeconds () << " [node " << m_node->GetId () << "] "; }
 
 #include "ns3/abort.h"
 #include "ns3/node.h"
@@ -51,6 +51,10 @@
 #include "tcp-option-ts.h"
 #include "rtt-estimator.h"
 #include "tcp-congestion-ops.h"
+#include "mptcp-crypto.h"
+#include "mptcp-subflow.h"
+#include "mptcp-socket-base.h"
+#include "tcp-option-mptcp.h"
 
 #include <math.h>
 #include <algorithm>
@@ -82,6 +86,17 @@ TcpSocketBase::GetTypeId (void)
                    UintegerValue (65535),
                    MakeUintegerAccessor (&TcpSocketBase::m_maxWinSize),
                    MakeUintegerChecker<uint16_t> ())
+    .AddAttribute ("NullISN",
+                   "Set to false if you want to enable random isn",
+                   BooleanValue (true),
+            //      MakeBooleanAccessor (&TcpSocketBase::SetQosSupported,&RegularWifiMac::GetQosSupported)
+                   MakeBooleanAccessor (&TcpSocketBase::m_nullIsn),
+                   MakeBooleanChecker ())
+    .AddAttribute ("EnableMpTcp",
+                   "Enable or disable MPTCP support",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&TcpSocketBase::m_mptcpEnabled),
+                   MakeBooleanChecker ())
     .AddAttribute ("IcmpCallback", "Callback invoked whenever an icmp error is received on this socket.",
                    CallbackValue (),
                    MakeCallbackAccessor (&TcpSocketBase::m_icmpCallback),
@@ -177,6 +192,10 @@ TcpSocketBase::GetTypeId (void)
                      "TCP slow start threshold (bytes)",
                      MakeTraceSourceAccessor (&TcpSocketBase::m_ssThTrace),
                      "ns3::TracedValueCallback::Uint32")
+    .AddTraceSource("UnackSequence",
+                    "First unacknowledged sequence number (SND.UNA)",
+                    MakeTraceSourceAccessor(&TcpSocketBase::m_firstTxUnack),
+                    "ns3::SequenceNumber32TracedValueCallback")
     .AddTraceSource ("Tx",
                      "Send tcp packet to IP protocol",
                      MakeTraceSourceAccessor (&TcpSocketBase::m_txTrace),
@@ -289,6 +308,7 @@ TcpSocketBase::TcpSocketBase (void)
     m_node (0),
     m_tcp (0),
     m_rtt (0),
+    m_firstTxUnack(0),
     m_rxBuffer (0),
     m_txBuffer (0),
     m_state (CLOSED),
@@ -309,6 +329,9 @@ TcpSocketBase::TcpSocketBase (void)
     m_winScalingEnabled (false),
     m_rcvWindShift (0),
     m_sndWindShift (0),
+    m_mptcpEnabled(false),
+    m_mptcpLocalKey(0),
+    m_mptcpLocalToken(0),
     m_timestampEnabled (true),
     m_timestampToEcho (0),
     m_sendPendingDataEvent (),
@@ -366,6 +389,8 @@ TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
     m_endPoint6 (0),
     m_node (sock.m_node),
     m_tcp (sock.m_tcp),
+    m_rtt (0),
+    m_firstTxUnack(sock.m_firstTxUnack),
     m_state (sock.m_state),
     m_errno (sock.m_errno),
     m_closeNotified (sock.m_closeNotified),
@@ -379,6 +404,9 @@ TcpSocketBase::TcpSocketBase (const TcpSocketBase& sock)
     m_highRxMark (sock.m_highRxMark),
     m_highRxAckMark (sock.m_highRxAckMark),
     m_bytesAckedNotProcessed (sock.m_bytesAckedNotProcessed),
+    m_mptcpEnabled (sock.m_mptcpEnabled),
+    m_mptcpLocalKey(sock.m_mptcpLocalKey),
+    m_mptcpLocalToken(sock.m_mptcpLocalToken),
     m_bytesInFlight (sock.m_bytesInFlight),
     m_winScalingEnabled (sock.m_winScalingEnabled),
     m_rcvWindShift (sock.m_rcvWindShift),
@@ -506,6 +534,12 @@ TcpSocketBase::GetNode (void) const
   return m_node;
 }
 
+SequenceNumber32
+TcpSocketBase::FirstUnackedSeq() const
+{
+  return m_firstTxUnack.Get();
+}
+
 /* Inherit from Socket class: Bind socket to an end-point in TcpL4Protocol */
 int
 TcpSocketBase::Bind (void)
@@ -612,6 +646,13 @@ TcpSocketBase::Bind (const Address &address)
 }
 
 void
+TcpSocketBase::InitializeCwnd (void)
+{
+  m_tcb->m_cWnd = GetInitialCwnd() * GetSegSize();
+  m_tcb->m_ssThresh = GetInitialSSThresh();
+}
+
+void
 TcpSocketBase::SetInitialSSThresh (uint32_t threshold)
 {
   NS_ABORT_MSG_UNLESS ( (m_state == CLOSED) || threshold == m_tcb->m_initialSsThresh,
@@ -641,11 +682,19 @@ TcpSocketBase::GetInitialCwnd (void) const
   return m_tcb->m_initialCWnd;
 }
 
+void
+TcpSocketBase::ScaleSsThresh (uint8_t scaleFactor)
+{
+  m_tcb->m_ssThresh <<= scaleFactor;
+}
+
 /* Inherit from Socket class: Initiate connection to a remote address:port */
 int
 TcpSocketBase::Connect (const Address & address)
 {
   NS_LOG_FUNCTION (this << address);
+
+  InitializeCwnd ();
 
   // If haven't do so, Bind() this socket first
   if (InetSocketAddress::IsMatchingType (address) && m_endPoint6 == 0)
@@ -720,6 +769,8 @@ int
 TcpSocketBase::Listen (void)
 {
   NS_LOG_FUNCTION (this);
+
+  InitializeCwnd ();
 
   // Linux quits EINVAL if we're not in CLOSED state, so match what they do
   if (m_state != CLOSED)
@@ -1209,8 +1260,13 @@ TcpSocketBase::DoForwardUp (Ptr<Packet> packet, const Address &fromAddress,
       return;
     }
 
-  m_rxTrace (packet, tcpHeader, this);
 
+    // TODO bad idea to put it here.
+    // should first check that packet is in range
+    // + option processing should be state dependant
+  
+    m_rxTrace (packet, tcpHeader, this);
+  
   if (tcpHeader.GetFlags () & TcpHeader::SYN)
     {
       /* The window field in a segment where the SYN bit is set (i.e., a <SYN>
@@ -1274,7 +1330,22 @@ TcpSocketBase::DoForwardUp (Ptr<Packet> packet, const Address &fromAddress,
       UpdateWindowSize (tcpHeader);
     }
 
-
+  //Process MPTCP options
+  if(tcpHeader.HasOption(TcpOption::MPTCP))
+    {
+      TcpHeader::TcpOptionList options;
+      tcpHeader.GetOptions (options);
+      
+      for(TcpHeader::TcpOptionList::const_iterator it(options.begin()); it != options.end(); ++it)
+      {
+        Ptr<const TcpOption> option = *it;
+        if(option->GetKind() == TcpOption::MPTCP)
+        {
+          ProcessOptionMpTcp (option);
+        }
+      }
+    }
+  
   if (m_rWnd.Get () == 0 && m_persistEvent.IsExpired ())
     { // Zero window: Enter persist state to send 1 byte to probe
       NS_LOG_LOGIC (this << " Enter zerowindow persist state");
@@ -1306,16 +1377,18 @@ TcpSocketBase::DoForwardUp (Ptr<Packet> packet, const Address &fromAddress,
       if ((tcpHeader.GetFlags () & ~(TcpHeader::PSH | TcpHeader::URG)) != TcpHeader::RST)
         { // Since m_endPoint is not configured yet, we cannot use SendRST here
           TcpHeader h;
-          Ptr<Packet> p = Create<Packet> ();
-          h.SetFlags (TcpHeader::RST);
-          h.SetSequenceNumber (m_tcb->m_nextTxSequence);
-          h.SetAckNumber (m_rxBuffer->NextRxSequence ());
+          GenerateEmptyPacketHeader(h, TcpHeader::RST);
+//          h.SetSequenceNumber (m_nextTxSequence);
+//          h.SetAckNumber (m_rxBuffer->NextRxSequence ());
           h.SetSourcePort (tcpHeader.GetDestinationPort ());
           h.SetDestinationPort (tcpHeader.GetSourcePort ());
-          h.SetWindowSize (AdvertisedWindowSize ());
-          AddOptions (h);
+//          h.SetWindowSize (AdvertisedWindowSize ());
+          // Do we really need that in a RST ?
+//          AddOptions (h);
+          Ptr<Packet> p = Create<Packet>();
           m_txTrace (p, h, this);
-          m_tcp->SendPacket (p, h, toAddress, fromAddress, m_boundnetdevice);
+          SendPacket(h, p);
+//          m_tcp->SendPacket (Create<Packet> (), h, toAddress, fromAddress, m_boundnetdevice);
         }
       break;
     case SYN_SENT:
@@ -1368,7 +1441,7 @@ TcpSocketBase::ProcessEstablished (Ptr<Packet> packet, const TcpHeader& tcpHeade
   // Different flags are different events
   if (tcpflags == TcpHeader::ACK)
     {
-      if (tcpHeader.GetAckNumber () < m_txBuffer->HeadSequence ())
+      if (tcpHeader.GetAckNumber () < FirstUnackedSeq())
         {
           // Case 1:  If the ACK is a duplicate (SEG.ACK < SND.UNA), it can be ignored.
           // Pag. 72 RFC 793
@@ -1435,7 +1508,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
   NS_ASSERT (m_tcb->m_segmentSize > 0);
 
   SequenceNumber32 ackNumber = tcpHeader.GetAckNumber ();
-  uint32_t bytesAcked = ackNumber - m_txBuffer->HeadSequence ();
+  uint32_t bytesAcked = ackNumber - FirstUnackedSeq();
   uint32_t segsAcked  = bytesAcked / m_tcb->m_segmentSize;
   m_bytesAckedNotProcessed += bytesAcked % m_tcb->m_segmentSize;
 
@@ -1455,7 +1528,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
 
   m_tcb->m_lastAckedSeq = ackNumber;
 
-  if (ackNumber == m_txBuffer->HeadSequence ()
+  if (ackNumber == FirstUnackedSeq()
       && ackNumber < m_tcb->m_nextTxSequence
       && packet->GetSize () == 0)
     {
@@ -1505,8 +1578,9 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
             {
               // RFC3042 Limited transmit: Send a new packet for each duplicated ACK before fast retransmit
               NS_LOG_INFO ("Limited transmit");
-              uint32_t sz = SendDataPacket (m_tcb->m_nextTxSequence, m_tcb->m_segmentSize, true);
-              m_tcb->m_nextTxSequence += sz;
+              NS_LOG_UNCOND("Limited transmit should be currently disabled");
+              //uint32_t sz = SendDataPacket (m_tcb->m_nextTxSequence, m_tcb->m_segmentSize, true);
+              //m_tcb->m_nextTxSequence += sz;
             }
         }
       else if (m_tcb->m_congState == TcpSocketState::CA_RECOVERY)
@@ -1516,16 +1590,19 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
                        "Increase cwnd to " << m_tcb->m_cWnd);
           SendPendingData (m_connected);
         }
-
+      else if (m_tcb->m_congState == TcpSocketState::CA_LOSS)
+        {
+          // What happens if we are in loss state and a DUPack is received?
+        }
       // Artificially call PktsAcked. After all, one segment has been ACKed.
       m_congestionControl->PktsAcked (m_tcb, 1, m_lastRtt);
     }
-  else if (ackNumber == m_txBuffer->HeadSequence ()
+  else if (ackNumber == FirstUnackedSeq()
            && ackNumber == m_tcb->m_nextTxSequence)
     {
       // Dupack, but the ACK is precisely equal to the nextTxSequence
     }
-  else if (ackNumber > m_txBuffer->HeadSequence ())
+  else if (ackNumber > FirstUnackedSeq())
     { // Case 3: New ACK, reset m_dupAckCount and update m_txBuffer
       bool callCongestionControl = true;
       bool resetRTO = true;
@@ -1597,6 +1674,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
               m_dupAckCount = SafeSubtraction (m_dupAckCount, segsAcked); // Update the dupAckCount
               m_retransOut  = SafeSubtraction (m_retransOut, 1);  // at least one retransmission
                                                                   // has reached the other side
+              m_firstTxUnack = ackNumber;
               m_txBuffer->DiscardUpTo (ackNumber);  //Bug 1850:  retransmit before newack
               DoRetransmit (); // Assume the next seq is lost. Retransmit lost packet
 
@@ -1713,11 +1791,124 @@ TcpSocketBase::ProcessListen (Ptr<Packet> packet, const TcpHeader& tcpHeader,
     {
       return;
     }
-  // Clone the socket, simulate fork
-  Ptr<TcpSocketBase> newSock = Fork ();
+
+   ///! we first forked here
+   //////////////////////////////////////
+   Ptr<TcpSocketBase> newSock = Fork();
+  
+    if(tcpHeader.HasOption(TcpOption::MPTCP)
+       && ProcessOptionMpTcp (tcpHeader.GetOption (TcpOption::MPTCP)))
+    {
+      NS_LOG_LOGIC("Fork & Upgrade to meta " << this);
+
+      // TODO is it possible to move these to CompleteFork
+      // would clutter less TcpSocketBase
+//      Ptr<MpTcpSubflow> sf = new MpTcpSubflow(*newSock);
+      Ptr<MpTcpSubflow> master = newSock->UpgradeToMeta();
+      bool result = m_tcp->AddSocket(newSock);
+      NS_ASSERT_MSG(result, "could not register meta");
+//      Ptr<MpTcpSocketBase> meta = DynamicCast<MpTcpSocketBase>(newSock);
+//      NS_LOG_UNCOND("meta=" << meta);
+//      Ptr<MpTcpSocketBase> meta = DynamicCast<MpTcpSocketBase>(this);
+//      Simulator::ScheduleNow (&MpTcpSocketBase::CompleteFork, this,
+//                          packet, tcpHeader,
+////                          master
+//                          fromAddress, toAddress
+//                          );
+      Simulator::ScheduleNow (&MpTcpSubflow::CompleteFork, master,
+                          packet, tcpHeader, fromAddress, toAddress);
+
+        return;
+    }
+
   NS_LOG_LOGIC ("Cloned a TcpSocketBase " << newSock);
   Simulator::ScheduleNow (&TcpSocketBase::CompleteFork, newSock,
                           packet, tcpHeader, fromAddress, toAddress);
+}
+
+Ptr<MpTcpSubflow>
+TcpSocketBase::UpgradeToMeta()
+{
+  NS_LOG_FUNCTION("Upgrading to meta " << this);
+
+  //*this
+  MpTcpSubflow *subflow = new MpTcpSubflow(*this);
+//  CompleteConstruct(sf);
+  Ptr<MpTcpSubflow> master(subflow, true);
+
+  // the master is always a new socket, hence we should register it
+  bool result = m_tcp->AddSocket(master);
+  NS_ASSERT_MSG(result, "Could not register master");
+
+//  master->SetupCallback();
+
+
+  // TODO set SetSendCallback but for meta
+//  Callback<void, Ptr<Socket>, uint32_t >
+  Callback<void, Ptr<Socket>, uint32_t > cbSend = this->m_sendCb;
+  Callback<void, Ptr<Socket> >  cbRcv = this->m_receivedData;
+  Callback<void, Ptr<Socket>, uint32_t>  cbDataSent = this->m_dataSent;
+  Callback<void, Ptr<Socket> >  cbConnectFail = this->m_connectionFailed;
+  Callback<void, Ptr<Socket> >  cbConnectSuccess = this->m_connectionSucceeded;
+  Callback<bool, Ptr<Socket>, const Address &> connectionRequest = this->m_connectionRequest;
+  Callback<void, Ptr<Socket>, const Address&> newConnectionCreated = this->m_newConnectionCreated;
+  ////////////////////////
+  //// !! CAREFUL !!
+  //// all callbacks are disabled
+//  SetConnectCallback (vPS, vPS);
+//  SetDataSentCallback (vPSUI);
+//  SetSendCallback (vPSUI);
+//  SetRecvCallback (vPS);
+//
+//  m_tcp->CreateSocket();
+  // Otherwise timers
+  this->CancelAllTimers();
+
+//  this->~TcpSocketBase();
+  // MpTcpSocketBase(*this) ?
+    TcpSocketBase* temp = new TcpSocketBase(*this);
+//  std::memcpy (this, temp, sizeof(std::aligned_storage<sizeof(MpTcpSocketBase)>::type) ); // dest/src/size
+
+  // I don't want the destructor to be called in that moment
+//  delete temp[];
+  
+  MpTcpSocketBase* meta = new (this) MpTcpSocketBase(*temp);
+  delete temp;
+  meta->SetTcp(master->m_tcp);
+  meta->SetNode(master->GetNode());
+
+  // we add it to tcp so that it can be freed and used for token lookup
+
+//  MpTcpSocketBase* meta = new (this) MpTcpSocketBase();
+//  meta->m_sendCb =sf->m_sendCb;
+  meta->AddSubflow(master);
+
+  // TODO convert this into a Socket member function so that
+  // members can become private again
+  meta->SetSendCallback(cbSend);
+  meta->SetConnectCallback (cbConnectSuccess, cbConnectFail);   // Ok
+  meta->SetDataSentCallback (cbDataSent);
+  meta->SetRecvCallback (cbRcv);
+  meta->SetAcceptCallback(connectionRequest, newConnectionCreated);
+  return master;
+}
+  
+void TcpSocketBase::EstablishConnection(Ptr<Packet> packet, const TcpHeader& tcpHeader, bool sendAck)
+{
+  NS_LOG_DEBUG ("SYN_SENT -> ESTABLISHED");
+  m_congestionControl->CongestionStateSet (m_tcb, TcpSocketState::CA_OPEN);
+  m_state = ESTABLISHED;
+  m_connected = true;
+  m_retxEvent.Cancel ();
+  m_rxBuffer->SetNextRxSequence (tcpHeader.GetSequenceNumber () + SequenceNumber32 (1));
+  m_tcb->m_highTxMark = ++m_tcb->m_nextTxSequence;
+  m_txBuffer->SetHeadSequence (m_tcb->m_nextTxSequence);
+  m_firstTxUnack = m_tcb->m_nextTxSequence;
+  
+  if(sendAck)
+  {
+    SendEmptyPacket (TcpHeader::ACK);
+  }
 }
 
 /* Received a packet upon SYN_SENT */
@@ -1754,15 +1945,37 @@ TcpSocketBase::ProcessSynSent (Ptr<Packet> packet, const TcpHeader& tcpHeader)
   else if (tcpflags == (TcpHeader::SYN | TcpHeader::ACK)
            && m_tcb->m_nextTxSequence + SequenceNumber32 (1) == tcpHeader.GetAckNumber ())
     { // Handshake completed
-      NS_LOG_DEBUG ("SYN_SENT -> ESTABLISHED");
-      m_congestionControl->CongestionStateSet (m_tcb, TcpSocketState::CA_OPEN);
-      m_state = ESTABLISHED;
-      m_connected = true;
-      m_retxEvent.Cancel ();
-      m_rxBuffer->SetNextRxSequence (tcpHeader.GetSequenceNumber () + SequenceNumber32 (1));
-      m_tcb->m_highTxMark = ++m_tcb->m_nextTxSequence;
-      m_txBuffer->SetHeadSequence (m_tcb->m_nextTxSequence);
-      SendEmptyPacket (TcpHeader::ACK);
+
+      Ptr<TcpSocketBase> master = nullptr;
+      // TODO separate between
+      if(tcpHeader.HasOption(TcpOption::MPTCP)
+         && ProcessOptionMpTcp (tcpHeader.GetOption (TcpOption::MPTCP)))
+      {
+        // SendRst?
+        // TODO save endpoint
+//        if(m_endpoint != 0)
+        NS_LOG_DEBUG("MATT " << this << " "<< GetInstanceTypeId());
+        master = UpgradeToMeta();
+        NS_LOG_DEBUG("MATT2 end of upgrade" << this << " "<< GetInstanceTypeId());
+//        bool result = m_tcp->AddSocket(master);
+//        NS_ASSERT(result);
+//        master->Bind();
+
+        // Carrément le renvoyer à forwardUp pour forcer la relecture de la windowsize
+        //Simulator::ScheduleNow( &MpTcpSubflow::ProcessSynSent, master, packet, tcpHeader);
+        //return;
+      }
+
+      if(master)
+      {
+        master->EstablishConnection (packet, tcpHeader, true);
+        EstablishConnection (packet, tcpHeader, false);
+      }
+      else
+      {
+        EstablishConnection (packet, tcpHeader, true);
+      }
+      
       SendPendingData (m_connected);
       Simulator::ScheduleNow (&TcpSocketBase::ConnectionSucceeded, this);
       // Always respond to first data packet to speed up the connection.
@@ -1804,6 +2017,7 @@ TcpSocketBase::ProcessSynRcvd (Ptr<Packet> packet, const TcpHeader& tcpHeader,
       m_retxEvent.Cancel ();
       m_tcb->m_highTxMark = ++m_tcb->m_nextTxSequence;
       m_txBuffer->SetHeadSequence (m_tcb->m_nextTxSequence);
+      m_firstTxUnack = m_tcb->m_nextTxSequence;
       if (m_endPoint)
         {
           m_endPoint->SetPeer (InetSocketAddress::ConvertFrom (fromAddress).GetIpv4 (),
@@ -1817,6 +2031,13 @@ TcpSocketBase::ProcessSynRcvd (Ptr<Packet> packet, const TcpHeader& tcpHeader,
       // Always respond to first data packet to speed up the connection.
       // Remove to get the behaviour of old NS-3 code.
       m_delAckCount = m_delAckMaxCount;
+
+      // TODO copy this socket into a subflow
+      // or create
+      // Ptr<MpTcpSubflow> sf = CopyObject<MpTcpSubflow>();
+      // TODO check a faire dans Listen aussi
+
+      // TODO do it afterwards, schedule it for instance ?
       ReceivedAck (packet, tcpHeader);
       NotifyNewConnectionCreated (this, fromAddress);
       // As this connection is established, the socket is available to send data now
@@ -1838,6 +2059,7 @@ TcpSocketBase::ProcessSynRcvd (Ptr<Packet> packet, const TcpHeader& tcpHeader,
           m_retxEvent.Cancel ();
           m_tcb->m_highTxMark = ++m_tcb->m_nextTxSequence;
           m_txBuffer->SetHeadSequence (m_tcb->m_nextTxSequence);
+          m_firstTxUnack =  m_tcb->m_nextTxSequence;
           if (m_endPoint)
             {
               m_endPoint->SetPeer (InetSocketAddress::ConvertFrom (fromAddress).GetIpv4 (),
@@ -2120,14 +2342,54 @@ TcpSocketBase::Destroy6 (void)
   CancelAllTimers ();
 }
 
-/* Send an empty packet with specified TCP flags */
 void
-TcpSocketBase::SendEmptyPacket (uint8_t flags)
+TcpSocketBase::GenerateEmptyPacketHeader(TcpHeader& header, uint8_t flags)
 {
-  NS_LOG_FUNCTION (this << (uint32_t)flags);
-  Ptr<Packet> p = Create<Packet> ();
-  TcpHeader header;
+  NS_LOG_FUNCTION (this << TcpHeader::FlagsToString(flags));
+
   SequenceNumber32 s = m_tcb->m_nextTxSequence;
+
+  if (flags & TcpHeader::FIN)
+    {
+      flags |= TcpHeader::ACK;
+    }
+  else if (m_state == FIN_WAIT_1 || m_state == LAST_ACK || m_state == CLOSING)
+    {
+      ++s;
+    }
+
+
+  header.SetFlags (flags);
+  header.SetSequenceNumber (s);
+
+  if(flags & TcpHeader::ACK)
+  {
+    header.SetAckNumber (m_rxBuffer->NextRxSequence ());
+  }
+
+//  header.SetAckNumber (m_rxBuffer->NextRxSequence ());
+  NS_LOG_DEBUG(this << " endpoint=" << m_endPoint);
+  if (m_endPoint != 0)
+    {
+      header.SetSourcePort (m_endPoint->GetLocalPort ());
+      header.SetDestinationPort (m_endPoint->GetPeerPort ());
+    }
+  else
+    {
+      NS_ASSERT(m_endPoint6 != 0);
+      header.SetSourcePort (m_endPoint6->GetLocalPort ());
+      header.SetDestinationPort (m_endPoint6->GetPeerPort ());
+    }
+//  AddOptions (header);
+  header.SetWindowSize (AdvertisedWindowSize ());
+}
+
+
+void
+TcpSocketBase::SendPacket(TcpHeader header, Ptr<Packet> p)
+{
+  NS_LOG_LOGIC ("Send packet via TcpL4Protocol with flags");
+  NS_ASSERT(header.GetWindowSize() == AdvertisedWindowSize ());
 
   /*
    * Add tags for each socket option.
@@ -2163,39 +2425,64 @@ TcpSocketBase::SendEmptyPacket (uint8_t flags)
       p->AddPacketTag (ipHopLimitTag);
     }
 
+  AddOptions (header);
+  
+  m_txTrace (p, header, this);
+
+  if (m_endPoint != 0)
+    {
+      m_tcp->SendPacket (p, header, m_endPoint->GetLocalAddress (),
+                         m_endPoint->GetPeerAddress (), m_boundnetdevice);
+    }
+  else
+    {
+      NS_ASSERT(m_endPoint6 != 0);
+      m_tcp->SendPacket (p, header, m_endPoint6->GetLocalAddress (),
+                         m_endPoint6->GetPeerAddress (), m_boundnetdevice);
+    }
+
+
+  if (header.GetFlags() & TcpHeader::ACK)
+    { // If sending an ACK, cancel the delay ACK as well
+      m_delAckEvent.Cancel ();
+      m_delAckCount = 0;
+      if (m_highTxAck < header.GetAckNumber ())
+      {
+        m_highTxAck = header.GetAckNumber ();
+      }
+    }
+}
+
+/* Send an empty packet with specified TCP flags
+TODO pass on a sequence number ?
+*/
+void
+TcpSocketBase::SendEmptyPacket (uint8_t flags)
+{
+    TcpHeader header;
+    GenerateEmptyPacketHeader(header, flags);
+    SendEmptyPacket(header);
+}
+
+void
+TcpSocketBase::SendEmptyPacket (TcpHeader& header)
+{
+//  NS_LOG_FUNCTION (this << (uint32_t)flags);
+  NS_LOG_FUNCTION (this << header);
+  Ptr<Packet> p = Create<Packet> ();
+
+
   if (m_endPoint == 0 && m_endPoint6 == 0)
     {
       NS_LOG_WARN ("Failed to send empty packet due to null endpoint");
       return;
     }
-  if (flags & TcpHeader::FIN)
-    {
-      flags |= TcpHeader::ACK;
-    }
-  else if (m_state == FIN_WAIT_1 || m_state == LAST_ACK || m_state == CLOSING)
-    {
-      ++s;
-    }
-
-  header.SetFlags (flags);
-  header.SetSequenceNumber (s);
-  header.SetAckNumber (m_rxBuffer->NextRxSequence ());
-  if (m_endPoint != 0)
-    {
-      header.SetSourcePort (m_endPoint->GetLocalPort ());
-      header.SetDestinationPort (m_endPoint->GetPeerPort ());
-    }
-  else
-    {
-      header.SetSourcePort (m_endPoint6->GetLocalPort ());
-      header.SetDestinationPort (m_endPoint6->GetPeerPort ());
-    }
-  AddOptions (header);
 
   // RFC 6298, clause 2.4
   m_rto = Max (m_rtt->GetEstimate () + Max (m_clockGranularity, m_rtt->GetVariation () * 4), m_minRto);
 
   uint16_t windowSize = AdvertisedWindowSize ();
+  uint8_t flags = header.GetFlags();
   bool hasSyn = flags & TcpHeader::SYN;
   bool hasFin = flags & TcpHeader::FIN;
   bool isAck = flags == TcpHeader::ACK;
@@ -2220,6 +2507,7 @@ TcpSocketBase::SendEmptyPacket (uint8_t flags)
           m_synCount--;
         }
 
+      SequenceNumber32 s = header.GetSequenceNumber();
       if (m_synRetries - 1 == m_synCount)
         {
           UpdateRttHistory (s, 0, false);
@@ -2231,36 +2519,16 @@ TcpSocketBase::SendEmptyPacket (uint8_t flags)
 
       windowSize = AdvertisedWindowSize (false);
     }
-  header.SetWindowSize (windowSize);
 
-  m_txTrace (p, header, this);
+    header.SetWindowSize (windowSize);
+    SendPacket(header, p);
 
-  if (m_endPoint != 0)
-    {
-      m_tcp->SendPacket (p, header, m_endPoint->GetLocalAddress (),
-                         m_endPoint->GetPeerAddress (), m_boundnetdevice);
-    }
-  else
-    {
-      m_tcp->SendPacket (p, header, m_endPoint6->GetLocalAddress (),
-                         m_endPoint6->GetPeerAddress (), m_boundnetdevice);
-    }
-
-  if (flags & TcpHeader::ACK)
-    { // If sending an ACK, cancel the delay ACK as well
-      m_delAckEvent.Cancel ();
-      m_delAckCount = 0;
-      if (m_highTxAck < header.GetAckNumber ())
-        {
-          m_highTxAck = header.GetAckNumber ();
-        }
-    }
   if (m_retxEvent.IsExpired () && (hasSyn || hasFin) && !isAck )
     { // Retransmit SYN / SYN+ACK / FIN / FIN+ACK to guard against lost
       NS_LOG_LOGIC ("Schedule retransmission timeout at time "
                     << Simulator::Now ().GetSeconds () << " to expire at time "
                     << (Simulator::Now () + m_rto.Get ()).GetSeconds ());
-      m_retxEvent = Simulator::Schedule (m_rto, &TcpSocketBase::SendEmptyPacket, this, flags);
+      m_retxEvent = Simulator::Schedule (m_rto, (void (TcpSocketBase::*)(uint8_t ))&TcpSocketBase::SendEmptyPacket, this, header.GetFlags());
     }
 }
 
@@ -2364,6 +2632,8 @@ void
 TcpSocketBase::CompleteFork (Ptr<Packet> p, const TcpHeader& h,
                              const Address& fromAddress, const Address& toAddress)
 {
+  NS_LOG_FUNCTION (this);
+
   // Get port and address from peer (connecting host)
   if (InetSocketAddress::IsMatchingType (toAddress))
     {
@@ -2372,6 +2642,7 @@ TcpSocketBase::CompleteFork (Ptr<Packet> p, const TcpHeader& h,
                                     InetSocketAddress::ConvertFrom (fromAddress).GetIpv4 (),
                                     InetSocketAddress::ConvertFrom (fromAddress).GetPort ());
       m_endPoint6 = 0;
+      NS_ASSERT(m_endPoint);
     }
   else if (Inet6SocketAddress::IsMatchingType (toAddress))
     {
@@ -2380,8 +2651,13 @@ TcpSocketBase::CompleteFork (Ptr<Packet> p, const TcpHeader& h,
                                       Inet6SocketAddress::ConvertFrom (fromAddress).GetIpv6 (),
                                       Inet6SocketAddress::ConvertFrom (fromAddress).GetPort ());
       m_endPoint = 0;
+      NS_ASSERT(m_endPoint6);
     }
-  m_tcp->AddSocket (this);
+  bool result = m_tcp->AddSocket (this);
+  if(!result)
+  {
+    NS_LOG_DEBUG("Can't add socket: already registered ? Can be because of mptcp");
+  }
 
   // Change the cloned socket from LISTEN state to SYN_RCVD
   NS_LOG_DEBUG ("LISTEN -> SYN_RCVD");
@@ -2414,7 +2690,16 @@ TcpSocketBase::ConnectionSucceeded ()
 uint32_t
 TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool withAck)
 {
-  NS_LOG_FUNCTION (this << seq << maxSize << withAck);
+    TcpHeader header;
+    GenerateEmptyPacketHeader(header, withAck ? TcpHeader::ACK : 0);
+    return SendDataPacket(header, seq, maxSize);
+}
+
+
+uint32_t
+TcpSocketBase::SendDataPacket (TcpHeader& header, SequenceNumber32 seq, uint32_t maxSize)
+{
+  NS_LOG_FUNCTION (this << seq << maxSize);
 
   bool isRetransmission = false;
   if (seq != m_tcb->m_highTxMark)
@@ -2424,52 +2709,11 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
 
   Ptr<Packet> p = m_txBuffer->CopyFromSequence (maxSize, seq);
   uint32_t sz = p->GetSize (); // Size of packet
-  uint8_t flags = withAck ? TcpHeader::ACK : 0;
   uint32_t remainingData = m_txBuffer->SizeFromSequence (seq + SequenceNumber32 (sz));
-
-  if (withAck)
-    {
-      m_delAckEvent.Cancel ();
-      m_delAckCount = 0;
-    }
-
-  /*
-   * Add tags for each socket option.
-   * Note that currently the socket adds both IPv4 tag and IPv6 tag
-   * if both options are set. Once the packet got to layer three, only
-   * the corresponding tags will be read.
-   */
-  if (IsManualIpTos ())
-    {
-      SocketIpTosTag ipTosTag;
-      ipTosTag.SetTos (GetIpTos ());
-      p->AddPacketTag (ipTosTag);
-    }
-
-  if (IsManualIpv6Tclass ())
-    {
-      SocketIpv6TclassTag ipTclassTag;
-      ipTclassTag.SetTclass (GetIpv6Tclass ());
-      p->AddPacketTag (ipTclassTag);
-    }
-
-  if (IsManualIpTtl ())
-    {
-      SocketIpTtlTag ipTtlTag;
-      ipTtlTag.SetTtl (GetIpTtl ());
-      p->AddPacketTag (ipTtlTag);
-    }
-
-  if (IsManualIpv6HopLimit ())
-    {
-      SocketIpv6HopLimitTag ipHopLimitTag;
-      ipHopLimitTag.SetHopLimit (GetIpv6HopLimit ());
-      p->AddPacketTag (ipHopLimitTag);
-    }
 
   if (m_closeOnEmpty && (remainingData == 0))
     {
-      flags |= TcpHeader::FIN;
+      header.SetFlags(TcpHeader::FIN | header.GetFlags());
       if (m_state == ESTABLISHED)
         { // On active close: I am the first one to send FIN
           NS_LOG_DEBUG ("ESTABLISHED -> FIN_WAIT_1");
@@ -2481,22 +2725,9 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
           m_state = LAST_ACK;
         }
     }
-  TcpHeader header;
-  header.SetFlags (flags);
+
   header.SetSequenceNumber (seq);
-  header.SetAckNumber (m_rxBuffer->NextRxSequence ());
-  if (m_endPoint)
-    {
-      header.SetSourcePort (m_endPoint->GetLocalPort ());
-      header.SetDestinationPort (m_endPoint->GetPeerPort ());
-    }
-  else
-    {
-      header.SetSourcePort (m_endPoint6->GetLocalPort ());
-      header.SetDestinationPort (m_endPoint6->GetPeerPort ());
-    }
-  header.SetWindowSize (AdvertisedWindowSize ());
-  AddOptions (header);
+//  AddOptions (header);
 
   if (m_retxEvent.IsExpired ())
     {
@@ -2515,24 +2746,8 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
       m_retxEvent = Simulator::Schedule (m_rto, &TcpSocketBase::ReTxTimeout, this);
     }
 
-  m_txTrace (p, header, this);
 
-  if (m_endPoint)
-    {
-      m_tcp->SendPacket (p, header, m_endPoint->GetLocalAddress (),
-                         m_endPoint->GetPeerAddress (), m_boundnetdevice);
-      NS_LOG_DEBUG ("Send segment of size " << sz << " with remaining data " <<
-                    remainingData << " via TcpL4Protocol to " <<  m_endPoint->GetPeerAddress () <<
-                    ". Header " << header);
-    }
-  else
-    {
-      m_tcp->SendPacket (p, header, m_endPoint6->GetLocalAddress (),
-                         m_endPoint6->GetPeerAddress (), m_boundnetdevice);
-      NS_LOG_DEBUG ("Send segment of size " << sz << " with remaining data " <<
-                    remainingData << " via TcpL4Protocol to " <<  m_endPoint6->GetPeerAddress () <<
-                    ". Header " << header);
-    }
+  SendPacket(header, p);
 
   UpdateRttHistory (seq, sz, isRetransmission);
 
@@ -2578,9 +2793,10 @@ TcpSocketBase::UpdateRttHistory (const SequenceNumber32 &seq, uint32_t sz,
 bool
 TcpSocketBase::SendPendingData (bool withAck)
 {
-  NS_LOG_FUNCTION (this << withAck);
+  NS_LOG_FUNCTION (this << withAck << " in state " << TcpStateName[m_state]);
   if (m_txBuffer->Size () == 0)
     {
+      NS_LOG_DEBUG("Nothing to send");
       return false;                           // Nothing to send
     }
   if (m_endPoint == 0 && m_endPoint6 == 0)
@@ -2610,11 +2826,11 @@ TcpSocketBase::SendPendingData (bool withAck)
                     " w " << w <<
                     " rxwin " << m_rWnd <<
                     " segsize " << m_tcb->m_segmentSize <<
-                    " nextTxSeq " << m_tcb->m_nextTxSequence <<
-                    " highestRxAck " << m_txBuffer->HeadSequence () <<
-                    " pd->Size " << m_txBuffer->Size () <<
-                    " pd->SFS " << m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence));
-
+//                    " nextTxSeq " <<  <<
+                    " highestRxAck " << FirstUnackedSeq() <<
+                    " TxBufferSize=" << m_txBuffer->Size () <<
+                    " pd->SizeFromSequence( " << m_tcb->m_nextTxSequence << ")="
+                    << m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence));
       NS_LOG_DEBUG ("Window: " << w <<
                     " cWnd: " << m_tcb->m_cWnd <<
                     " unAck: " << UnAckDataCount ());
@@ -2635,7 +2851,7 @@ uint32_t
 TcpSocketBase::UnAckDataCount () const
 {
   NS_LOG_FUNCTION (this);
-  return m_tcb->m_nextTxSequence.Get () - m_txBuffer->HeadSequence ();
+  return m_tcb->m_nextTxSequence.Get () - FirstUnackedSeq();
 }
 
 uint32_t
@@ -2720,7 +2936,7 @@ TcpSocketBase::ReceivedData (Ptr<Packet> p, const TcpHeader& tcpHeader)
 
   // Put into Rx buffer
   SequenceNumber32 expectedSeq = m_rxBuffer->NextRxSequence ();
-  if (!m_rxBuffer->Add (p, tcpHeader))
+  if (!m_rxBuffer->Add (p, tcpHeader.GetSequenceNumber ()))
     { // Insert failed: No data or RX buffer full
       SendEmptyPacket (TcpHeader::ACK);
       return;
@@ -2790,9 +3006,10 @@ TcpSocketBase::EstimateRtt (const TcpHeader& tcpHeader)
         { // Ok to use this sample
           if (m_timestampEnabled && tcpHeader.HasOption (TcpOption::TS))
             {
-              Ptr<TcpOptionTS> ts;
-              ts = DynamicCast<TcpOptionTS> (tcpHeader.GetOption (TcpOption::TS));
-              m = TcpOptionTS::ElapsedTimeFromTsValue (ts->GetEcho ());
+                NS_LOG_WARN("Reenable that");
+//              Ptr<TcpOptionTS> ts;
+//              ts = DynamicCast<TcpOptionTS> (tcpHeader.GetOption (TcpOption::TS));
+//              m = TcpOptionTS::ElapsedTimeFromTsValue (ts->GetEcho ());
             }
           else
             {
@@ -2822,6 +3039,19 @@ TcpSocketBase::EstimateRtt (const TcpHeader& tcpHeader)
     }
 }
 
+Ptr<const RttEstimator>
+TcpSocketBase::GetRttEstimator()
+{
+    //!
+    return m_rtt;
+}
+
+Time
+TcpSocketBase::ComputeRTO() const
+{
+    return Max (m_rtt->GetEstimate () + Max (m_clockGranularity, m_rtt->GetVariation ()*4), m_minRto);
+}
+
 // Called by the ReceivedAck() when new ACK received and by ProcessSynRcvd()
 // when the three-way handshake completed. This cancels retransmission timer
 // and advances Tx window
@@ -2837,25 +3067,40 @@ TcpSocketBase::NewAck (SequenceNumber32 const& ack, bool resetRTO)
       m_retxEvent.Cancel ();
       // On receiving a "New" ack we restart retransmission timer .. RFC 6298
       // RFC 6298, clause 2.4
-      m_rto = Max (m_rtt->GetEstimate () + Max (m_clockGranularity, m_rtt->GetVariation () * 4), m_minRto);
+      m_rto = ComputeRTO();
 
       NS_LOG_LOGIC (this << " Schedule ReTxTimeout at time " <<
                     Simulator::Now ().GetSeconds () << " to expire at time " <<
                     (Simulator::Now () + m_rto.Get ()).GetSeconds ());
       m_retxEvent = Simulator::Schedule (m_rto, &TcpSocketBase::ReTxTimeout, this);
     }
-
+  if (m_rWnd.Get () == 0 && m_persistEvent.IsExpired ())
+    { // Zero window: Enter persist state to send 1 byte to probe
+      NS_LOG_LOGIC (this << "Enter zerowindow persist state");
+      NS_LOG_LOGIC (this << "Cancelled ReTxTimeout event which was set to expire at " <<
+                    (Simulator::Now () + Simulator::GetDelayLeft (m_retxEvent)).GetSeconds ());
+      m_retxEvent.Cancel ();
+      NS_LOG_LOGIC ("Schedule persist timeout at time " <<
+                    Simulator::Now ().GetSeconds () << " to expire at time " <<
+                    (Simulator::Now () + m_persistTimeout).GetSeconds ());
+      m_persistEvent = Simulator::Schedule (m_persistTimeout, &TcpSocketBase::PersistTimeout, this);
+      NS_ASSERT (m_persistTimeout == Simulator::GetDelayLeft (m_persistEvent));
+    }
   // Note the highest ACK and tell app to send more
   NS_LOG_LOGIC ("TCP " << this << " NewAck " << ack <<
-                " numberAck " << (ack - m_txBuffer->HeadSequence ())); // Number bytes ack'ed
-  m_txBuffer->DiscardUpTo (ack);
+                " numberAck " << (ack - FirstUnackedSeq())); // Number bytes ack'ed
+
+//  m_firstTxUnack = std::min(ack, m_txBuffer->TailSequence());
+  m_firstTxUnack = ack;
+  UpdateTxBuffer();
+
   if (GetTxAvailable () > 0)
     {
       NotifySend (GetTxAvailable ());
     }
   if (ack > m_tcb->m_nextTxSequence)
     {
-      m_tcb->m_nextTxSequence = ack; // If advanced
+     m_tcb->m_nextTxSequence = m_firstTxUnack; // If advanced
     }
   if (m_txBuffer->Size () == 0 && m_state != FIN_WAIT_1 && m_state != CLOSING)
     { // No retransmit timer if no data to retransmit
@@ -2863,6 +3108,18 @@ TcpSocketBase::NewAck (SequenceNumber32 const& ack, bool resetRTO)
                     (Simulator::Now () + Simulator::GetDelayLeft (m_retxEvent)).GetSeconds ());
       m_retxEvent.Cancel ();
     }
+  // Try to send more data
+  if (!m_sendPendingDataEvent.IsRunning ())
+    {
+      m_sendPendingDataEvent = Simulator::Schedule ( TimeStep (1), &TcpSocketBase::SendPendingData, this, m_connected);
+    }
+}
+
+void
+TcpSocketBase::UpdateTxBuffer()
+{
+  NS_LOG_FUNCTION(this);
+  m_txBuffer->DiscardUpTo (m_firstTxUnack);
 }
 
 // Retransmit timeout
@@ -2877,7 +3134,7 @@ TcpSocketBase::ReTxTimeout ()
       return;
     }
   // If all data are received (non-closing socket and nothing to send), just return
-  if (m_state <= ESTABLISHED && m_txBuffer->HeadSequence () >= m_tcb->m_highTxMark)
+  if (m_state <= ESTABLISHED && FirstUnackedSeq() >= m_tcb->m_highTxMark)
     {
       return;
     }
@@ -2919,33 +3176,9 @@ TcpSocketBase::PersistTimeout ()
   m_persistTimeout = std::min (Seconds (60), Time (2 * m_persistTimeout)); // max persist timeout = 60s
   Ptr<Packet> p = m_txBuffer->CopyFromSequence (1, m_tcb->m_nextTxSequence);
   TcpHeader tcpHeader;
-  tcpHeader.SetSequenceNumber (m_tcb->m_nextTxSequence);
-  tcpHeader.SetAckNumber (m_rxBuffer->NextRxSequence ());
-  tcpHeader.SetWindowSize (AdvertisedWindowSize ());
-  if (m_endPoint != 0)
-    {
-      tcpHeader.SetSourcePort (m_endPoint->GetLocalPort ());
-      tcpHeader.SetDestinationPort (m_endPoint->GetPeerPort ());
-    }
-  else
-    {
-      tcpHeader.SetSourcePort (m_endPoint6->GetLocalPort ());
-      tcpHeader.SetDestinationPort (m_endPoint6->GetPeerPort ());
-    }
-  AddOptions (tcpHeader);
-
-  m_txTrace (p, tcpHeader, this);
-
-  if (m_endPoint != 0)
-    {
-      m_tcp->SendPacket (p, tcpHeader, m_endPoint->GetLocalAddress (),
-                         m_endPoint->GetPeerAddress (), m_boundnetdevice);
-    }
-  else
-    {
-      m_tcp->SendPacket (p, tcpHeader, m_endPoint6->GetLocalAddress (),
-                         m_endPoint6->GetPeerAddress (), m_boundnetdevice);
-    }
+  GenerateEmptyPacketHeader(tcpHeader, 0);
+//  AddOptions (tcpHeader);
+  SendPacket(tcpHeader,p);
 
   NS_LOG_LOGIC ("Schedule persist timeout at time "
                 << Simulator::Now ().GetSeconds () << " to expire at time "
@@ -2962,7 +3195,7 @@ TcpSocketBase::Retransmit ()
       return;
     }
   // If all data are received (non-closing socket and nothing to send), just return
-  if (m_state <= ESTABLISHED && m_txBuffer->HeadSequence () >= m_tcb->m_highTxMark)
+  if (m_state <= ESTABLISHED && FirstUnackedSeq() >= m_tcb->m_highTxMark)
     {
       return;
     }
@@ -3006,7 +3239,7 @@ TcpSocketBase::Retransmit ()
       m_tcb->m_cWnd = m_tcb->m_segmentSize;
     }
 
-  m_tcb->m_nextTxSequence = m_txBuffer->HeadSequence (); // Restart from highest Ack
+  m_tcb->m_nextTxSequence = FirstUnackedSeq(); // Restart from highest Ack
   m_dupAckCount = 0;
 
   NS_LOG_DEBUG ("RTO. Reset cwnd to " <<  m_tcb->m_cWnd << ", ssthresh to " <<
@@ -3050,16 +3283,19 @@ TcpSocketBase::DoRetransmit ()
       if (m_state == FIN_WAIT_1 || m_state == CLOSING)
         { // Must have lost FIN, re-send
           SendEmptyPacket (TcpHeader::FIN);
+          // TODO write a member called SendFin
+//          SendFin();
         }
       return;
     }
 
   // Retransmit a data packet: Call SendDataPacket
-  uint32_t sz = SendDataPacket (m_txBuffer->HeadSequence (), m_tcb->m_segmentSize, true);
+  NS_LOG_LOGIC ("TcpSocketBase " << this << " retxing seq " << FirstUnackedSeq());
+  uint32_t sz = SendDataPacket (FirstUnackedSeq(), GetSegSize(), true);
   ++m_retransOut;
 
   // In case of RTO, advance m_tcb->m_nextTxSequence
-  m_tcb->m_nextTxSequence = std::max (m_tcb->m_nextTxSequence.Get (), m_txBuffer->HeadSequence () + sz);
+  m_tcb->m_nextTxSequence = std::max (m_tcb->m_nextTxSequence.Get (), FirstUnackedSeq() + sz);
 
   NS_LOG_DEBUG ("retxing seq " << m_txBuffer->HeadSequence ());
 }
@@ -3246,15 +3482,136 @@ TcpSocketBase::GetAllowBroadcast (void) const
   return false;
 }
 
+bool
+TcpSocketBase::IsTcpOptionAllowed(uint8_t kind) const
+{
+    NS_LOG_FUNCTION(this << (int)kind);
+
+    switch(kind)
+    {
+    case TcpOption::TS:
+        return m_timestampEnabled;
+    case TcpOption::WINSCALE:
+        return m_winScalingEnabled;
+    case TcpOption::MPTCP:
+        NS_LOG_INFO("MpTcp Active=" << m_mptcpEnabled);
+        return m_mptcpEnabled;
+    default:
+        break;
+    };
+    return false;
+}
+
+uint64_t
+TcpSocketBase::GenerateUniqueMpTcpKey()
+{
+  NS_LOG_FUNCTION("Generating key");
+  NS_ASSERT(m_tcp);
+  // TODO rather use NS3 random generator
+//  NS_ASSERT_MSG( m_mptcpLocalKey != 0, "Key already generated");
+
+  uint64_t localKey, idsn;
+  uint32_t localToken;
+
+  do
+  {
+    //! arbitrary function, TODO replace with ns3 random gneerator
+    localKey = (rand() % 1000 + 1);
+    GenerateTokenForKey( HMAC_SHA1, localKey, localToken, idsn );
+  }
+  while(m_tcp->LookupMpTcpToken(localToken));
+
+  m_mptcpLocalToken = localToken;
+  m_mptcpLocalKey = localKey;
+//  NS_LOG_DEBUG("Key/token set to " << localKey << "/" << localToken);
+//  NS_LOG_DEBUG("Key/token set to " << m_mptcpLocalKey << "/" << m_mptcpLocalToken);
+//  uint64_t idsn = 0;
+//  /**
+//
+//  /!\ seq nb must be 64 bits for mptcp but that would mean rewriting lots of code so
+//
+//  TODO add a SetInitialSeqNb member into TcpSocketBase
+//  **/
+//  if(m_nullIsn)
+//  {
+//    m_nextTxSequence = (uint32_t)0;
+//  }
+//  else
+//  {
+//    m_nextTxSequence = (uint32_t)idsn;
+//  }
+//
+////  SetTxHead(m_nextTxSequence);
+//  m_firstTxUnack = m_nextTxSequence;
+//  m_highTxMark = m_nextTxSequence;
+
+  return localKey;
+}
+
+
+void
+TcpSocketBase::AddMpTcpOptions (TcpHeader& header)
+{
+    NS_LOG_FUNCTION(this);
+    // If key not genereated yet
+    if (m_mptcpLocalKey == 0)
+    {
+      // for the sake of simplicity, we generate a key even if unused
+      GenerateUniqueMpTcpKey();
+      NS_LOG_DEBUG("Key/token set to " << m_mptcpLocalKey << "/" << m_mptcpLocalToken);
+    }
+
+    if((header.GetFlags () == TcpHeader::SYN))
+    {
+        // Append the MPTCP capable option
+        Ptr<TcpOptionMpTcpCapable> mpc = CreateObject<TcpOptionMpTcpCapable>();
+        mpc->SetSenderKey(m_mptcpLocalKey);
+        header.AppendOption(mpc);
+    }
+}
+
 void
 TcpSocketBase::AddOptions (TcpHeader& header)
 {
   NS_LOG_FUNCTION (this << header);
 
+  //GetState()
+  if(IsTcpOptionAllowed(TcpOption::MPTCP))
+  {
+    NS_LOG_DEBUG("MPTCP enabled");
+    AddMpTcpOptions(header);
+  }
+
   if (m_timestampEnabled)
     {
       AddOptionTimestamp (header);
     }
+}
+
+int
+TcpSocketBase::ProcessOptionMpTcp ( const Ptr<const TcpOption> option)
+{
+    //!
+//    NS_LOG_DEBUG("Does nothing");
+  Ptr<const TcpOptionMpTcpCapable> mpc = DynamicCast<const TcpOptionMpTcpCapable>(option);
+
+//  if(!GetTcpOption(header, mpc))
+  if (!mpc)
+  {
+      NS_LOG_WARN("Invalid option " << option);
+      return 0;
+  }
+  // else save peerKey ?
+  return 1;
+
+//    NS_LOG_UNCOND("found MP_CAPABLE");
+//    return 1;
+//  }
+//  else
+//  {
+//    NS_LOG_UNCOND("MP_CAPABLE not found");
+//  }
+
 }
 
 void
@@ -3339,6 +3696,13 @@ TcpSocketBase::ProcessOptionTimestamp (const Ptr<const TcpOption> option,
                m_timestampToEcho << " and Echo="     << ts->GetEcho ());
 }
 
+
+TcpSocket::TcpStates_t
+TcpSocketBase::GetState() const
+{
+    return m_state;
+}
+
 void
 TcpSocketBase::AddOptionTimestamp (TcpHeader& header)
 {
@@ -3354,7 +3718,8 @@ TcpSocketBase::AddOptionTimestamp (TcpHeader& header)
                option->GetTimestamp () << " echo=" << m_timestampToEcho);
 }
 
-bool TcpSocketBase::UpdateWindowSize (const TcpHeader &header)
+bool
+TcpSocketBase::UpdateWindowSize (const TcpHeader &header)
 {
   NS_LOG_FUNCTION (this << header);
   //  If the connection is not established, the window size is always
@@ -3480,7 +3845,11 @@ TcpSocketBase::SetCongestionControlAlgorithm (Ptr<TcpCongestionOps> algo)
 Ptr<TcpSocketBase>
 TcpSocketBase::Fork (void)
 {
-  return CopyObject<TcpSocketBase> (this);
+//  return CopyObject<TcpSocketBase> (this);
+  char *addr = new char[sizeof(std::aligned_storage<sizeof(MpTcpSocketBase)>::type)];
+  Ptr<TcpSocketBase> p = Ptr<TcpSocketBase> (new (addr) TcpSocketBase(*this), false);
+//  return CopyObject<TcpSocketBase> (this);
+  return p;
 }
 
 uint32_t
