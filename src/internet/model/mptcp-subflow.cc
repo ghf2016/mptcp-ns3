@@ -1654,7 +1654,7 @@ MpTcpSubflow::DiscardAtMostOneTxMapping(SequenceNumber64 const& firstUnackedMeta
 //MpTcpSubflow::DiscardTxMappingsUpTo(SequenceNumber32 const& dack, SequenceNumber32 const& ack)
 {
   
-  SequenceNumber32 firstUnackedSeq = m_txBuffer->HeadSequence();
+  SequenceNumber32 firstUnackedSeq = FirstUnackedSeq();
   NS_LOG_DEBUG("Removing mappings with DSN <" << firstUnackedMeta
           << " and SSN <" << firstUnackedSeq);
 
@@ -1676,7 +1676,7 @@ MpTcpSubflow::DiscardAtMostOneTxMapping(SequenceNumber64 const& firstUnackedMeta
     return false;
   }
 
-  if(mapping.TailDSN() < firstUnackedMeta && mapping.TailSSN() < firstUnackedSeq)
+  if(mapping.HeadDSN() <= firstUnackedMeta && mapping.TailSSN() < firstUnackedSeq)
   {
     NS_LOG_DEBUG("mapping can be discarded");
     bool ok = m_TxMappings.DiscardMapping(mapping);
