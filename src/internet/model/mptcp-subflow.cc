@@ -961,6 +961,8 @@ MpTcpSubflow::CompleteFork(Ptr<Packet> p, const TcpHeader& h, const Address& fro
                     << " (old endpoint=" << GetMeta()->m_endPoint << " )");
        GetMeta()->m_endPoint = m_endPoint;
 
+      //Need to initialize the rx buffer
+      GetMeta()->CompleteFork(p, h, fromAddress, toAddress);
     }
 }
 
