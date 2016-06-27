@@ -423,9 +423,7 @@ MpTcpSocketBase::CompleteFork(
 )
 {
   NS_LOG_FUNCTION(this);
-  NS_FATAL_ERROR("Disabled");
-  #if 0
-  #endif
+  m_rxBuffer->SetNextRxSequence (mptcpHeader.GetSequenceNumber () + SequenceNumber32 (1));
 }
 
 
