@@ -651,7 +651,7 @@ MpTcpSubflow::Retransmit(void)
 {
   NS_LOG_FUNCTION (this);
 
-//  TcpSocketBase::Retransmit();
+  TcpSocketBase::Retransmit();
 #if 0
   NS_LOG_LOGIC (this << " ReTxTimeout Expired at time " << Simulator::Now ().GetSeconds ()
   << "Exiting Fast recovery  (previously set to " << m_inFastRec << ")");
