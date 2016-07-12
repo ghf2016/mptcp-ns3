@@ -3108,11 +3108,6 @@ TcpSocketBase::NewAck (SequenceNumber32 const& ack, bool resetRTO)
                     (Simulator::Now () + Simulator::GetDelayLeft (m_retxEvent)).GetSeconds ());
       m_retxEvent.Cancel ();
     }
-  // Try to send more data
-  if (!m_sendPendingDataEvent.IsRunning ())
-    {
-      m_sendPendingDataEvent = Simulator::Schedule ( TimeStep (1), &TcpSocketBase::SendPendingData, this, m_connected);
-    }
 }
 
 void

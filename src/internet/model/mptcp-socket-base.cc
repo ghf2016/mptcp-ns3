@@ -1419,8 +1419,6 @@ MpTcpSocketBase::SyncTxBuffers()
 
       return;
     }
-  // in case it freed some space in cwnd, try to send more data
-  SendPendingData(m_connected);
 }
 
 
