@@ -584,6 +584,11 @@ public:
   // ToDo prepare a wrapper to create mapping from that
 //  MpTcpMapping GetMapping(void) const;
   virtual void GetMapping (uint64_t& dsn, uint32_t& ssn, uint16_t& length) const;
+  
+  
+  virtual uint64_t GetDataSequenceNumber () const;
+  virtual uint32_t GetSubflowSequenceNumber () const;
+  virtual uint16_t GetMappingLength () const;
 
   /**
    * \brief

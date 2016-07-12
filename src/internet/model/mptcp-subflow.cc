@@ -94,15 +94,9 @@ static inline
 MpTcpMapping
 GetMapping(const Ptr<const TcpOptionMpTcpDSS> dss)
 {
-    MpTcpMapping mapping;
-    uint64_t dsn;
-    uint32_t ssn;
-    uint16_t length;
-
-    dss->GetMapping (dsn, ssn, length);
-    mapping.SetHeadDSN( SequenceNumber64(dsn));
-    mapping.SetMappingSize(length);
-    mapping.MapToSSN( SequenceNumber32(ssn));
+    MpTcpMapping mapping (SequenceNumber64(dss->GetDataSequenceNumber()),
+                          SequenceNumber32(dss->GetSubflowSequenceNumber()),
+                          dss->GetMappingLength());
     return mapping;
 }
 
@@ -125,16 +119,16 @@ MpTcpSubflow::SetMeta(Ptr<MpTcpSocketBase> metaSocket)
 void
 MpTcpSubflow::DumpInfo() const
 {
-  SequenceNumber32 firstUnacked = m_txBuffer->HeadSequence();
+  SequenceNumber32 firstUnacked = FirstUnackedSeq();
   
   NS_LOG_LOGIC ("MpTcpSubflow " << this << " SendPendingData" <<
                 //" w " << w <<
                 " rxwin " << m_rWnd <<
                 //" segsize " << GetSegSize() <<
-                " nextTxSeq " << m_tcb->m_nextTxSequence.Get() <<
+                " nextTxSeq " << m_tcb->m_nextTxSequence <<
                 " highestRxAck " << firstUnacked <<
                 //" pd->Size " << m_txBuffer->Size () <<
-                " pd->SFS " << m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence.Get())
+                " pd->SFS " << m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence)
                 );
 }
 
@@ -480,11 +474,7 @@ bool
 MpTcpSubflow::AddLooseMapping(SequenceNumber64 dsnHead, uint16_t length)
 {
     NS_LOG_LOGIC("Adding mapping with dsn=" << dsnHead << " len=" << length);
-    MpTcpMapping mapping;
-
-    mapping.MapToSSN(FirstUnmappedSSN());
-    mapping.SetMappingSize(length);
-    mapping.SetHeadDSN(dsnHead);
+    MpTcpMapping mapping (dsnHead, FirstUnmappedSSN(), length);
 
     bool ok = m_TxMappings.AddMapping( mapping  );
     NS_ASSERT_MSG( ok, "Can't add mapping: 2 mappings overlap");
@@ -868,7 +858,7 @@ MpTcpSubflow::AddMpTcpOptionDSS(TcpHeader& header)
   if( sendDataFin && !(m_dssFlags & TcpOptionMpTcpDSS::DSNMappingPresent))
   {
 
-    m_dssMapping.MapToSSN(SequenceNumber32(0));
+    m_dssMapping.SetHeadSSN(SequenceNumber32(0));
     m_dssMapping.SetHeadDSN(SEQ64TO32(GetMeta()->m_txBuffer->TailSequence() ));
     m_dssMapping.SetMappingSize(1);
 

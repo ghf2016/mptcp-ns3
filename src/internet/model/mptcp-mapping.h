@@ -71,6 +71,8 @@ class MpTcpMapping
 {
 public:
   MpTcpMapping(void);
+  
+  MpTcpMapping(SequenceNumber64 dataSequence, SequenceNumber32 subflowSequence, uint16_t length);
 
   virtual ~MpTcpMapping(void);
 
@@ -83,7 +85,19 @@ public:
   * \brief Set subflow sequence number
   * \param headSSN
   */
-  void MapToSSN( SequenceNumber32 const& headSSN);
+  void SetHeadSSN( SequenceNumber32 const& headSSN);
+  
+  /**
+   *
+   */
+  void
+  SetHeadDSN(SequenceNumber64 const& headDSN);
+  
+  /**
+   * \brief Set mapping length
+   */
+  virtual void
+  SetMappingSize(uint16_t const&);
 
 
 
@@ -104,18 +118,6 @@ public:
 
   virtual bool
   OverlapRangeDSN(const SequenceNumber64& headDSN, const uint16_t& len) const;
-
-  /**
-   *
-   */
-  void
-  SetHeadDSN(SequenceNumber64 const&);
-
-  /**
-   * \brief Set mapping length
-   */
-  virtual void
-  SetMappingSize(uint16_t const&);
 
   /**
   * \param ssn Data seqNb
@@ -197,11 +199,10 @@ public:
 
   // TODO should be SequenceNumber64
 protected:
-//  SequenceNumber64 m_dataSequenceNumber;   //!< MPTCP level
+
   SequenceNumber64 m_dataSequenceNumber;   //!< MPTCP sequence number
   SequenceNumber32 m_subflowSequenceNumber;  //!< subflow sequence number
   uint16_t m_dataLevelLength;  //!< mapping length / size
-//  bool m_send;  //!< Set to true if mapping already sent & acknowledged ?
 };
 
 

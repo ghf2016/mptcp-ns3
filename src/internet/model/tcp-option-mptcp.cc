@@ -744,6 +744,27 @@ TcpOptionMpTcpDSS::GetMapping (uint64_t& dsn, uint32_t& ssn, uint16_t& length) c
       length--;
     }
 }
+  
+uint64_t TcpOptionMpTcpDSS::GetDataSequenceNumber () const
+{
+  return m_dsn;
+}
+
+uint32_t TcpOptionMpTcpDSS::GetSubflowSequenceNumber () const
+{
+  return m_ssn;
+}
+
+uint16_t TcpOptionMpTcpDSS::GetMappingLength () const
+{
+  uint16_t length = m_dataLevelLength;
+  if (GetFlags () & DataFin)
+  {
+    length--;
+  }
+  return length;
+}
+
 
 uint32_t
 TcpOptionMpTcpDSS::GetSerializedSize (void) const

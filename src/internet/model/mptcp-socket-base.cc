@@ -87,15 +87,9 @@ static inline
 MpTcpMapping
 GetMapping(Ptr<TcpOptionMpTcpDSS> dss)
 {
-    MpTcpMapping mapping;
-    uint64_t dsn;
-    uint32_t ssn;
-    uint16_t length;
-
-    dss->GetMapping (dsn, ssn, length);
-    mapping.SetHeadDSN( SequenceNumber64(dsn));
-    mapping.SetMappingSize(length);
-    mapping.MapToSSN( SequenceNumber32(ssn));
+    MpTcpMapping mapping (SequenceNumber64(dss->GetDataSequenceNumber()),
+                          SequenceNumber32(dss->GetSubflowSequenceNumber()),
+                          dss->GetMappingLength());
     return mapping;
 }
 

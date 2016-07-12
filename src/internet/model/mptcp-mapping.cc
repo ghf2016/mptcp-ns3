@@ -47,6 +47,16 @@ MpTcpMapping::MpTcpMapping() :
 {
   NS_LOG_FUNCTION(this);
 }
+  
+MpTcpMapping::MpTcpMapping (SequenceNumber64 dataSequence,
+                           SequenceNumber32 subflowSequence,
+                            uint16_t length) :
+  m_dataSequenceNumber(dataSequence),
+  m_subflowSequenceNumber(subflowSequence),
+  m_dataLevelLength(length)
+{
+   NS_LOG_FUNCTION(this);
+}
 
 MpTcpMapping::~MpTcpMapping(void)
 {
@@ -96,10 +106,10 @@ MpTcpMapping::SetHeadDSN(SequenceNumber64 const& dsn)
 
 
 void
-MpTcpMapping::MapToSSN( SequenceNumber32 const& seq)
+MpTcpMapping::SetHeadSSN( SequenceNumber32 const& headSSN)
 {
-  NS_LOG_DEBUG(this << " mapping to ssn=" << seq);
-  m_subflowSequenceNumber = seq;
+  NS_LOG_DEBUG(this << " mapping to ssn=" << headSSN);
+  m_subflowSequenceNumber = headSSN;
 }
 
 // n'est jamais utilisé en fait
@@ -375,7 +385,7 @@ MpTcpMappingContainer::GetMappingsStartingFromSSN(SequenceNumber32 ssn, std::set
     //  std::copy(it,m_mappings.end(),);
 //    http://www.cplusplus.com/reference/algorithm/equal_range/
     MpTcpMapping temp;
-    temp.MapToSSN(ssn);
+    temp.SetHeadSSN(ssn);
     MappingList::const_iterator it = std::lower_bound( m_mappings.begin(), m_mappings.end(), temp);
 
     std::copy(it, m_mappings.end(), std::inserter(missing, missing.begin()));
@@ -390,7 +400,7 @@ MpTcpMappingContainer::GetMappingForSSN(const SequenceNumber32& ssn, MpTcpMappin
     return false;
 
   MpTcpMapping temp;
-  temp.MapToSSN(ssn);
+  temp.SetHeadSSN(ssn);
 
   // Returns the first that is not less
   // upper_bound returns the greater
