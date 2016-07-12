@@ -485,11 +485,7 @@ SequenceNumber32
 MpTcpSubflow::FirstUnmappedSSN()
 {
     NS_LOG_FUNCTION(this);
-    SequenceNumber32 ssn;
-    if(!m_TxMappings.FirstUnmappedSSN(ssn))
-    {
-        ssn = m_txBuffer->TailSequence();
-    }
+    SequenceNumber32 ssn = m_txBuffer->TailSequence();
     return ssn;
 }
 
