@@ -1539,6 +1539,34 @@ MpTcpSubflow::ProcessSynRcvd(Ptr<Packet> packet, const TcpHeader& tcpHeader, con
 
 }
 #endif
+  
+bool MpTcpSubflow::CanSendPendingData ()
+{
+  NS_LOG_FUNCTION (this);
+  
+  //Note, for subflows, we need to check against the meta socket's txbuffer, not our own
+  //(which is used for dealing with congestion control rather than flow control).
+  Ptr<MpTcpSocketBase> metaSocket = GetMeta();
+  
+  uint32_t w = AvailableWindow (); // Get available window size
+  // Stop sending if we need to wait for a larger Tx window (prevent silly window syndrome)
+  if (w < m_tcb->m_segmentSize && metaSocket->m_txBuffer->SizeFromSequence (metaSocket->m_tcb->m_nextTxSequence) > w)
+  {
+    NS_LOG_LOGIC ("Preventing Silly Window Syndrome. Wait to send.");
+    return false; // No more
+  }
+  // Nagle's algorithm (RFC896): Hold off sending if there is unacked data
+  // in the buffer and the amount of data to send is less than one segment
+  if (!m_noDelay && UnAckDataCount () > 0
+      && metaSocket->m_txBuffer->SizeFromSequence (metaSocket->m_tcb->m_nextTxSequence) < m_tcb->m_segmentSize)
+  {
+    NS_LOG_LOGIC ("Invoking Nagle's algorithm. Wait to send.");
+    return false;
+  }
+  return w > 0;
+}
+
+  
 bool
 MpTcpSubflow::SendPendingData(bool withAck)
 {

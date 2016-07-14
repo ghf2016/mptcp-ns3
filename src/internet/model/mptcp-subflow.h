@@ -207,6 +207,8 @@ public:
   SendMapping should be used instead.
   **/
   int Send(Ptr<Packet> p, uint32_t flags) override;
+  
+  virtual bool CanSendPendingData ();
 
   //! disabled
   Ptr<Packet> RecvFrom(uint32_t maxSize, uint32_t flags, Address &fromAddress);

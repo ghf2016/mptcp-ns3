@@ -2787,6 +2787,28 @@ TcpSocketBase::UpdateRttHistory (const SequenceNumber32 &seq, uint32_t sz,
     }
 }
 
+bool TcpSocketBase::CanSendPendingData ()
+{
+  NS_LOG_FUNCTION (this);
+  uint32_t w = AvailableWindow (); // Get available window size
+  // Stop sending if we need to wait for a larger Tx window (prevent silly window syndrome)
+  if (w < m_tcb->m_segmentSize && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) > w)
+  {
+    NS_LOG_LOGIC ("Preventing Silly Window Syndrome. Wait to send.");
+    return false; // No more
+  }
+  // Nagle's algorithm (RFC896): Hold off sending if there is unacked data
+  // in the buffer and the amount of data to send is less than one segment
+  if (!m_noDelay && UnAckDataCount () > 0
+      && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) < m_tcb->m_segmentSize)
+  {
+    NS_LOG_LOGIC ("Invoking Nagle's algorithm. Wait to send.");
+    return false;
+  }
+  return w > 0;
+}
+
+  
 /* Send as much pending data as possible according to the Tx window. Note that
  *  this function did not implement the PSH flag
  */
@@ -2809,17 +2831,8 @@ TcpSocketBase::SendPendingData (bool withAck)
     {
       uint32_t w = AvailableWindow (); // Get available window size
       // Stop sending if we need to wait for a larger Tx window (prevent silly window syndrome)
-      if (w < m_tcb->m_segmentSize && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) > w)
+      if (!CanSendPendingData())
         {
-          NS_LOG_LOGIC ("Preventing Silly Window Syndrome. Wait to send.");
-          break; // No more
-        }
-      // Nagle's algorithm (RFC896): Hold off sending if there is unacked data
-      // in the buffer and the amount of data to send is less than one segment
-      if (!m_noDelay && UnAckDataCount () > 0
-          && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) < m_tcb->m_segmentSize)
-        {
-          NS_LOG_LOGIC ("Invoking Nagle's algorithm. Wait to send.");
           break;
         }
       NS_LOG_LOGIC ("TcpSocketBase " << this << " SendPendingData" <<

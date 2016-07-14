@@ -123,11 +123,12 @@ MpTcpSchedulerRoundRobin::GenerateMapping(int& activeSubflowArrayId, SequenceNum
         uint32_t subflowWindow = subflow->AvailableWindow();
 
         NS_LOG_DEBUG("subflow AvailableWindow  [" << subflowWindow << "]");
-        uint32_t canSend = std::min( subflowWindow, metaWindow);
+        //uint32_t canSend = std::min( subflowWindow, metaWindow);
+        uint32_t canSend = subflowWindow;
 
         //! Can't send more than SegSize
         //metaWindow en fait on s'en fout du SegSize ?
-        if(canSend > 0)
+        if(canSend > 0 && subflow->CanSendPendingData())
         {
 
             activeSubflowArrayId = m_lastUsedFlowId;

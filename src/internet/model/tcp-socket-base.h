@@ -491,6 +491,14 @@ public:
   virtual bool     GetAllowBroadcast (void) const;
   
   /**
+   * \brief Check to see if we can send data in the Tx window.
+   *
+   *
+   * \returns true if we can send data
+   */
+  virtual bool CanSendPendingData ();
+  
+  /**
    * TracedCallback signature for tcp packet transmission or reception events.
    *
    * \param [in] packet The packet.
