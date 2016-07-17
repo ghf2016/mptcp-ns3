@@ -2136,20 +2136,19 @@ MpTcpSubflow::ReceivedData(Ptr<Packet> p, const TcpHeader& tcpHeader)
     }
   else
     { // In-sequĶence packet: ACK if delayed ack count allows
-      // TODO i removed delayed ack. may reestablish later
-//      if (++m_delAckCount >= m_delAckMaxCount)
-//        {
-//          m_delAckEvent.Cancel();
-//          m_delAckCount = 0;
-          sendAck = true;
-//            dss->SetDataAck(GetMeta()->m_rxBuffer->NextRxSequence().GetValue());
-//            SendEmptyPacket(answerHeader);
-//        }
-//      else if (m_delAckEvent.IsExpired())
-//        {
-//          m_delAckEvent = Simulator::Schedule(m_delAckTimeout, &TcpSocketBase::DelAckTimeout, this);
-//          NS_LOG_LOGIC (this << " scheduled delayed ACK at " << (Simulator::Now () + Simulator::GetDelayLeft (m_delAckEvent)).GetSeconds ());
-//        }
+      if (++m_delAckCount >= m_delAckMaxCount)
+      {
+        m_delAckEvent.Cancel ();
+        m_delAckCount = 0;
+        sendAck = true;
+      }
+      else if (m_delAckEvent.IsExpired ())
+      {
+        m_delAckEvent = Simulator::Schedule (m_delAckTimeout,
+                                             &TcpSocketBase::DelAckTimeout, this);
+        NS_LOG_LOGIC (this << " scheduled delayed ACK at "
+                      << (Simulator::Now () + Simulator::GetDelayLeft (m_delAckEvent)).GetSeconds ());
+      }
     }
 
 
