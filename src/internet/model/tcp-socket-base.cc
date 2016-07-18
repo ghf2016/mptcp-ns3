@@ -533,6 +533,16 @@ TcpSocketBase::GetNode (void) const
   NS_LOG_FUNCTION_NOARGS ();
   return m_node;
 }
+  
+void TcpSocketBase::SetSocketWrapper (Ptr<TcpSocketWrapper> proxy)
+{
+  m_proxy = proxy;
+}
+
+Ptr<TcpSocketWrapper> TcpSocketBase::GetSocketWrapper ()
+{
+  return m_proxy;
+}
 
 SequenceNumber32
 TcpSocketBase::FirstUnackedSeq() const
@@ -555,6 +565,26 @@ TcpSocketBase::Bind (void)
   m_tcp->AddSocket (this);
 
   return SetupCallback ();
+}
+
+Ptr<NetDevice>
+TcpSocketBase::MapIpToDevice (Ipv4Address addr) const
+{
+  NS_LOG_DEBUG(addr);
+  Ptr<Ipv4> ipv4client = m_node->GetObject<Ipv4>();
+  
+  for (uint32_t n = 0; n < ipv4client->GetNInterfaces(); n++)
+  {
+    for (uint32_t a = 0; a < ipv4client->GetNAddresses(n); a++)
+    {
+      NS_LOG_UNCOND( "Client addr " << n <<"/" << a << "=" << ipv4client->GetAddress(n,a));
+      if(addr ==ipv4client->GetAddress(n,a).GetLocal()) {
+        NS_LOG_UNCOND("EUREKA same ip=" << addr);
+        return m_node->GetDevice(n);
+      }
+    }
+  }
+  return nullptr;
 }
 
 int
@@ -604,6 +634,13 @@ TcpSocketBase::Bind (const Address &address)
           m_errno = port ? ERROR_ADDRINUSE : ERROR_ADDRNOTAVAIL;
           return -1;
         }
+      
+      Ptr<NetDevice> dev = MapIpToDevice (m_endPoint->GetLocalAddress());
+      
+      if(dev) {
+        m_endPoint->BindToNetDevice(dev);
+        m_boundnetdevice = m_endPoint->GetBoundNetDevice();
+      }
     }
   else if (Inet6SocketAddress::IsMatchingType (address))
     {
@@ -695,6 +732,7 @@ TcpSocketBase::Connect (const Address & address)
   NS_LOG_FUNCTION (this << address);
 
   InitializeCwnd ();
+  GenerateUniqueMpTcpKey();
 
   // If haven't do so, Bind() this socket first
   if (InetSocketAddress::IsMatchingType (address) && m_endPoint6 == 0)
@@ -1792,42 +1830,59 @@ TcpSocketBase::ProcessListen (Ptr<Packet> packet, const TcpHeader& tcpHeader,
       return;
     }
 
-   ///! we first forked here
-   //////////////////////////////////////
-   Ptr<TcpSocketBase> newSock = Fork();
+  /**
+    we first forked here, socket is not registered into TCPL4Protocol yet
+   **/
+  Ptr<TcpSocketBase> newSock = Fork();
+  newSock->ResetUserCallbacks ();
   
-    if(tcpHeader.HasOption(TcpOption::MPTCP)
-       && ProcessOptionMpTcp (tcpHeader.GetOption (TcpOption::MPTCP)))
-    {
-      NS_LOG_LOGIC("Fork & Upgrade to meta " << this);
-
-      // TODO is it possible to move these to CompleteFork
-      // would clutter less TcpSocketBase
-//      Ptr<MpTcpSubflow> sf = new MpTcpSubflow(*newSock);
-      Ptr<MpTcpSubflow> master = newSock->UpgradeToMeta();
-      bool result = m_tcp->AddSocket(newSock);
-      NS_ASSERT_MSG(result, "could not register meta");
-//      Ptr<MpTcpSocketBase> meta = DynamicCast<MpTcpSocketBase>(newSock);
-//      NS_LOG_UNCOND("meta=" << meta);
-//      Ptr<MpTcpSocketBase> meta = DynamicCast<MpTcpSocketBase>(this);
-//      Simulator::ScheduleNow (&MpTcpSocketBase::CompleteFork, this,
-//                          packet, tcpHeader,
-////                          master
-//                          fromAddress, toAddress
-//                          );
-      Simulator::ScheduleNow (&MpTcpSubflow::CompleteFork, master,
-                          packet, tcpHeader, fromAddress, toAddress);
-
-        return;
-    }
+  Ptr<const TcpOptionMpTcpCapable> mpc;
+  
+  if (GetTcpOption (tcpHeader, mpc))
+  {
+    NS_ASSERT_MSG (!mpc->HasReceiverKey(), "Should not be the case");
+    NS_LOG_LOGIC("Fork & Upgrade to meta " << this);
+    
+    // TODO is it possible to move these to CompleteFork to reduce clutter
+    uint64_t localKey = this->GenerateUniqueMpTcpKey ();
+    Ptr<MpTcpSubflow> master = newSock->UpgradeToMeta(localKey, mpc->GetSenderKey());
+    
+    // TODO Move part of it to UpgradeToMeta
+    // HACK matt otherwise the new subflow sends the packet on the wroing interface
+    // Now useless remove ?
+    master->m_boundnetdevice = this->m_boundnetdevice;
+    
+    // We add the socket after initial parameters are correctly set so that
+    // tracing doesn't contain strange values that mess up plotting
+    bool result = m_tcp->AddSocket(newSock);
+    NS_ASSERT_MSG(result, "could not register meta");
+    
+    Simulator::ScheduleNow (&MpTcpSubflow::CompleteFork, master,
+                            packet, tcpHeader, fromAddress, toAddress);
+    
+    return;
+  }
 
   NS_LOG_LOGIC ("Cloned a TcpSocketBase " << newSock);
   Simulator::ScheduleNow (&TcpSocketBase::CompleteFork, newSock,
                           packet, tcpHeader, fromAddress, toAddress);
 }
 
+void
+TcpSocketBase::ResetUserCallbacks (void)
+{
+  
+  Callback<void, Ptr< Socket > > vPS = MakeNullCallback<void, Ptr<Socket> > ();
+  Callback<void, Ptr<Socket>, const Address &> vPSA = MakeNullCallback<void, Ptr<Socket>, const Address &> ();
+  Callback<void, Ptr<Socket>, uint32_t> vPSUI = MakeNullCallback<void, Ptr<Socket>, uint32_t> ();
+  SetConnectCallback (vPS, vPS);
+  SetDataSentCallback (vPSUI);
+  SetSendCallback (vPSUI);
+  SetRecvCallback (vPS);
+}
+  
 Ptr<MpTcpSubflow>
-TcpSocketBase::UpgradeToMeta()
+TcpSocketBase::UpgradeToMeta (uint64_t localKey, uint64_t peerKey)
 {
   NS_LOG_FUNCTION("Upgrading to meta " << this);
 
@@ -1955,7 +2010,7 @@ TcpSocketBase::ProcessSynSent (Ptr<Packet> packet, const TcpHeader& tcpHeader)
         // TODO save endpoint
 //        if(m_endpoint != 0)
         NS_LOG_DEBUG("MATT " << this << " "<< GetInstanceTypeId());
-        master = UpgradeToMeta();
+        master = UpgradeToMeta(0, 0);
         NS_LOG_DEBUG("MATT2 end of upgrade" << this << " "<< GetInstanceTypeId());
 //        bool result = m_tcp->AddSocket(master);
 //        NS_ASSERT(result);

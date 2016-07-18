@@ -617,7 +617,7 @@ public:
    * 
    * \returns Pointer to interface.
    */
-  Ptr<NetDevice> GetBoundNetDevice (); 
+  virtual Ptr<NetDevice> GetBoundNetDevice ();
 
 
   /**
@@ -655,14 +655,14 @@ public:
    * \param flag Enable/Disable receive information
    * \returns nothing
    */
-  void SetRecvPktInfo (bool flag);
+  virtual void SetRecvPktInfo (bool flag);
 
   /**
    * \brief Get status indicating whether enable/disable packet information to socket
    *
    * \returns True if packet information should be sent to socket
    */
-  bool IsRecvPktInfo () const;
+  virtual bool IsRecvPktInfo () const;
 
   /**
    * \brief Manually set IP Type of Service field
@@ -675,7 +675,7 @@ public:
    *
    * \param ipTos The desired TOS value for IP headers
    */
-  void SetIpTos (uint8_t ipTos);
+  virtual void SetIpTos (uint8_t ipTos);
 
   /**
    * \brief Query the value of IP Type of Service of this socket
@@ -685,7 +685,7 @@ public:
    *
    * \return The raw IP TOS value
    */
-  uint8_t GetIpTos (void) const;
+  virtual uint8_t GetIpTos (void) const;
 
   /**
    * \brief Tells a socket to pass information about IP Type of Service up the stack
@@ -698,7 +698,7 @@ public:
    * \param ipv4RecvTos Whether the socket should add SocketIpv4TosTag tag
    * to the packet
    */
-  void SetIpRecvTos (bool ipv4RecvTos);
+  virtual void SetIpRecvTos (bool ipv4RecvTos);
 
   /**
    * \brief Ask if the socket is currently passing information about IP Type of Service up the stack
@@ -708,7 +708,7 @@ public:
    *
    * \return Whether the IP_RECVTOS is set
    */
-  bool IsIpRecvTos (void) const;
+  virtual bool IsIpRecvTos (void) const;
 
   /**
    * \brief Manually set IPv6 Traffic Class field
@@ -720,7 +720,7 @@ public:
    *
    * \param ipTclass The desired TCLASS value for IPv6 headers
    */
-  void SetIpv6Tclass (int ipTclass);
+  virtual void SetIpv6Tclass (int ipTclass);
 
   /**
    * \brief Query the value of IPv6 Traffic Class field of this socket
@@ -730,7 +730,7 @@ public:
    *
    * \return The raw IPV6_TCLASS value
    */
-  uint8_t GetIpv6Tclass (void) const;
+  virtual uint8_t GetIpv6Tclass (void) const;
 
   /**
    * \brief Tells a socket to pass information about IPv6 Traffic Class up the stack
@@ -743,7 +743,7 @@ public:
    * \param ipv6RecvTclass Whether the socket should add SocketIpv6TclassTag tag
    * to the packet
    */
-  void SetIpv6RecvTclass (bool ipv6RecvTclass);
+  virtual void SetIpv6RecvTclass (bool ipv6RecvTclass);
 
   /**
    * \brief Ask if the socket is currently passing information about IPv6 Traffic Class up the stack
@@ -753,7 +753,7 @@ public:
    *
    * \return Whether the IPV6_RECVTCLASS is set
    */
-  bool IsIpv6RecvTclass (void) const;
+  virtual bool IsIpv6RecvTclass (void) const;
 
   /**
    * \brief Manually set IP Time to Live field
@@ -786,7 +786,7 @@ public:
    * \param ipv4RecvTtl Whether the socket should add SocketIpv4TtlTag tag
    * to the packet
    */
-  void SetIpRecvTtl (bool ipv4RecvTtl);
+  virtual void SetIpRecvTtl (bool ipv4RecvTtl);
 
   /**
    * \brief Ask if the socket is currently passing information about IP_TTL up the stack
@@ -796,7 +796,7 @@ public:
    *
    * \return Whether the IP_RECVTTL is set
    */
-  bool IsIpRecvTtl (void) const;
+  virtual bool IsIpRecvTtl (void) const;
 
   /**
    * \brief Manually set IPv6 Hop Limit
@@ -829,7 +829,7 @@ public:
    * \param ipv6RecvHopLimit Whether the socket should add SocketIpv6HopLimitTag tag
    * to the packet
    */
-  void SetIpv6RecvHopLimit (bool ipv6RecvHopLimit);
+  virtual void SetIpv6RecvHopLimit (bool ipv6RecvHopLimit);
 
   /**
    * \brief Ask if the socket is currently passing information about IPv6 Hop Limit up the stack
@@ -839,7 +839,7 @@ public:
    *
    * \return Whether the IPV6_RECVHOPLIMIT is set
    */
-  bool IsIpv6RecvHopLimit (void) const;
+  virtual bool IsIpv6RecvHopLimit (void) const;
  
   /**
    * \brief Joins a IPv6 multicast group.

@@ -36,6 +36,7 @@
 #include "tcp-tx-buffer.h"
 #include "tcp-rx-buffer.h"
 #include "rtt-estimator.h"
+#include "tcp-socket-wrapper.h"
 
 namespace ns3 {
 
@@ -304,6 +305,11 @@ public:
    * \param node the node
    */
   virtual void SetNode (Ptr<Node> node);
+  
+  Ptr<NetDevice> MapIpToDevice(Ipv4Address) const;
+  
+  virtual void SetSocketWrapper (Ptr<TcpSocketWrapper> proxy);
+  virtual Ptr<TcpSocketWrapper> GetSocketWrapper ();
 
   /**
    * \brief Set the associated TCP L4 protocol.
@@ -1005,8 +1011,10 @@ protected:
    * \param master
    * \return master subflow. It is not associated to the meta at this point
    */
-  virtual Ptr<MpTcpSubflow> UpgradeToMeta();
+  virtual Ptr<MpTcpSubflow> UpgradeToMeta(uint64_t locallKey,
+                                          uint64_t peerKey);
 
+  void ResetUserCallbacks (void);
 
   /**
    * In this baseclass, this only deals with MpTcpCapable options in order to know if the socket
@@ -1197,6 +1205,8 @@ protected:
   uint64_t    m_mptcpLocalKey;        //!< MPTCP key
   uint32_t    m_mptcpLocalToken;      //!< Hash of the key
 
+  Ptr<TcpSocketWrapper> m_proxy;      //!<A pointer to the owning socket wrapper
+  
   bool    m_winScalingEnabled; //!< Window Scale option enabled (RFC 7323)
   uint8_t m_rcvWindShift;      //!< Window shift to apply to outgoing segments
   uint8_t m_sndWindShift;      //!< Window shift to apply to incoming segments
