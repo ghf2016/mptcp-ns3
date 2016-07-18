@@ -245,7 +245,7 @@ int main(int argc, char* argv[])
   
   //BulkSendHelper bulkSend("ns3::TcpSocketFactory", remoteAddress);
   
-  onOff.SetConstantRate(DataRate("40Mbps"), segmentSizeWithoutHeaders);
+  onOff.SetConstantRate(DataRate("20Mbps"), segmentSizeWithoutHeaders);
   //onOff.SetConstantRate(DataRate("200Kbps"), 2565);
   //bulkSend.SetAttribute("SendSize", UintegerValue(10e6));
   //bulkSend.SetAttribute("MaxBytes", UintegerValue(100e6));
