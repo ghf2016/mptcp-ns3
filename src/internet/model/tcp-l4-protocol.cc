@@ -213,35 +213,8 @@ TcpL4Protocol::CreateSocket (Ptr<TcpCongestionOps> algo, TypeId socketTypeId)
   
   Ptr<RttEstimator> rtt = rttFactory.Create<RttEstimator> ();
   
-  Ptr<TcpSocketBase> socket;
+  Ptr<TcpSocketBase> socket = socketFactory.Create<TcpSocketBase> ();
   
-  // TODO allocate the max between children of tcpsocketbase ?
-  //  MpTcpSocketBase *addr = new MpTcpSocketBase;
-  //addr->~MpTcpSocketBase();
-  NS_LOG_UNCOND("sizeof(mtcp)=" << sizeof(MpTcpSocketBase)
-                << "sizeof(aligned mtcp)=" << sizeof(std::aligned_storage<sizeof(MpTcpSocketBase)>::type)
-                << " & sizeof(tcp) = "<< sizeof(TcpSocketBase));
-  
-  NS_LOG_UNCOND("socketTypeId=" << socketTypeId);
-  /**
-   This part is a hackish and creates memory leaks. The idea here is that when one creates a TcpSocketBase,
-   there is the possibility that this socket may be replaced by an MpTcp Socket. In order for the application to
-   see the same socket, we reallocate via the "placement new" technique
-   **/
-  if(socketTypeId == TcpSocketBase::GetTypeId())
-  {
-    //  char *addr = new char[ std::max(sizeof(MpTcpSocketBase), sizeof(TcpSocketBase))];
-    char *addr = new char[sizeof(std::aligned_storage<sizeof(MpTcpSocketBase)>::type)];
-    
-    // now we should call the destructor ourself
-    TcpSocketBase *temp = new (addr) TcpSocketBase();
-    socket = CompleteConstruct(temp);
-    socket.Acquire();
-  }
-  else
-  {
-    socket = socketFactory.Create<TcpSocketBase> ();
-  }
   socket->SetNode (m_node);
   socket->SetTcp (this);
   socket->SetRtt (rtt);
@@ -249,8 +222,11 @@ TcpL4Protocol::CreateSocket (Ptr<TcpCongestionOps> algo, TypeId socketTypeId)
   // TODO solve
   socket->SetCongestionControlAlgorithm (algo);
   
-  m_sockets.push_back (socket);
-  return socket;
+  Ptr<TcpSocketWrapper> wrapper = CreateObject<TcpSocketWrapper>();
+  wrapper->SetSocket(socket);
+  
+  m_sockets.push_back (wrapper);
+  return wrapper;
 }
 
 Ptr<Socket>
@@ -484,11 +460,11 @@ TcpL4Protocol::LookupMpTcpToken (uint32_t token)
               );
   
   /* We go through all the metas to find one with the correct token */
-  for(std::vector<Ptr<TcpSocketBase> >::iterator it = m_sockets.begin(), last(m_sockets.end());
+  for(std::vector<Ptr<TcpSocketWrapper> >::iterator it = m_sockets.begin(), last(m_sockets.end());
       it != last;
       it++)
   {
-    Ptr<TcpSocketBase> sock = *it;
+    Ptr<TcpSocket> sock = (*it)->GetSocket();
     Ptr<MpTcpSocketBase> meta = DynamicCast<MpTcpSocketBase>( sock );
     Address addr;
     (*it)->GetSockName(addr);
@@ -851,12 +827,12 @@ void
 TcpL4Protocol::DumpSockets () const
 {
   NS_LOG_UNCOND ("== Dumping sockets ==");
-  for(std::vector<Ptr<TcpSocketBase> >::const_iterator it = m_sockets.cbegin(), last(m_sockets.cend());
+  for(std::vector<Ptr<TcpSocketWrapper> >::const_iterator it = m_sockets.cbegin(), last(m_sockets.cend());
       it != last;
       it++
       )
   {
-    Ptr<TcpSocketBase> sock = *it;
+    Ptr<TcpSocket> sock = (*it)->GetSocket();
     NS_LOG_DEBUG("Socket : " << sock << " socket of type=" << sock->GetInstanceTypeId());
   }
   NS_LOG_UNCOND ("== end of dump ==");
@@ -869,10 +845,10 @@ TcpL4Protocol::AddSocket (Ptr<TcpSocketBase> socket)
   // TODO remove afterwards
   DumpSockets();
   
-  std::vector<Ptr<TcpSocketBase> >::iterator it = std::find(m_sockets.begin(), m_sockets.end(), socket);
+  std::vector<Ptr<TcpSocketWrapper> >::iterator it = std::find(m_sockets.begin(), m_sockets.end(), socket->GetSocketWrapper());
   if (it == m_sockets.end())
   {
-    m_sockets.push_back (socket);
+    m_sockets.push_back (socket->GetSocketWrapper());
     return true;
   }
   return false;
@@ -882,11 +858,11 @@ bool
 TcpL4Protocol::RemoveSocket (Ptr<TcpSocketBase> socket)
 {
   NS_LOG_FUNCTION (this << socket);
-  std::vector<Ptr<TcpSocketBase> >::iterator it = m_sockets.begin ();
+  std::vector<Ptr<TcpSocketWrapper> >::iterator it = m_sockets.begin ();
 
   while (it != m_sockets.end ())
     {
-      if (*it == socket)
+      if ((*it)->GetSocket() == socket)
         {
           m_sockets.erase (it);
           return true;

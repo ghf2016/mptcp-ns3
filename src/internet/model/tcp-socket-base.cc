@@ -543,6 +543,16 @@ Ptr<TcpSocketWrapper> TcpSocketBase::GetSocketWrapper ()
 {
   return m_proxy;
 }
+  
+Ipv4EndPoint* TcpSocketBase::GetEndpoint () const
+{
+  return m_endPoint;
+}
+
+Ipv6EndPoint* TcpSocketBase::GetEndpoint6 () const
+{
+  return m_endPoint6;
+}
 
 SequenceNumber32
 TcpSocketBase::FirstUnackedSeq() const
@@ -1885,66 +1895,29 @@ Ptr<MpTcpSubflow>
 TcpSocketBase::UpgradeToMeta (uint64_t localKey, uint64_t peerKey)
 {
   NS_LOG_FUNCTION("Upgrading to meta " << this);
-
-  //*this
-  MpTcpSubflow *subflow = new MpTcpSubflow(*this);
-//  CompleteConstruct(sf);
-  Ptr<MpTcpSubflow> master(subflow, true);
-
-  // the master is always a new socket, hence we should register it
-  bool result = m_tcp->AddSocket(master);
-  NS_ASSERT_MSG(result, "Could not register master");
-
-//  master->SetupCallback();
-
-
-  // TODO set SetSendCallback but for meta
-//  Callback<void, Ptr<Socket>, uint32_t >
-  Callback<void, Ptr<Socket>, uint32_t > cbSend = this->m_sendCb;
-  Callback<void, Ptr<Socket> >  cbRcv = this->m_receivedData;
-  Callback<void, Ptr<Socket>, uint32_t>  cbDataSent = this->m_dataSent;
-  Callback<void, Ptr<Socket> >  cbConnectFail = this->m_connectionFailed;
-  Callback<void, Ptr<Socket> >  cbConnectSuccess = this->m_connectionSucceeded;
-  Callback<bool, Ptr<Socket>, const Address &> connectionRequest = this->m_connectionRequest;
-  Callback<void, Ptr<Socket>, const Address&> newConnectionCreated = this->m_newConnectionCreated;
-  ////////////////////////
-  //// !! CAREFUL !!
-  //// all callbacks are disabled
-//  SetConnectCallback (vPS, vPS);
-//  SetDataSentCallback (vPSUI);
-//  SetSendCallback (vPSUI);
-//  SetRecvCallback (vPS);
-//
-//  m_tcp->CreateSocket();
-  // Otherwise timers
-  this->CancelAllTimers();
-
-//  this->~TcpSocketBase();
-  // MpTcpSocketBase(*this) ?
-    TcpSocketBase* temp = new TcpSocketBase(*this);
-//  std::memcpy (this, temp, sizeof(std::aligned_storage<sizeof(MpTcpSocketBase)>::type) ); // dest/src/size
-
-  // I don't want the destructor to be called in that moment
-//  delete temp[];
   
-  MpTcpSocketBase* meta = new (this) MpTcpSocketBase(*temp);
-  delete temp;
-  meta->SetTcp(master->m_tcp);
-  meta->SetNode(master->GetNode());
-
-  // we add it to tcp so that it can be freed and used for token lookup
-
-//  MpTcpSocketBase* meta = new (this) MpTcpSocketBase();
-//  meta->m_sendCb =sf->m_sendCb;
+  this->CancelAllTimers();
+  
+  Ptr<TcpSocketWrapper> wrapper = GetSocketWrapper();
+  
+  Ptr<MpTcpSocketBase> meta = CopyObject<MpTcpSocketBase, TcpSocketBase>(this);
+  wrapper->SetSocket(meta);
+  
+  Ptr<MpTcpSubflow> master = CopyObject<MpTcpSubflow, TcpSocketBase>(this);
+  
+  //To allow the deallocation of the current socket
+  m_endPoint = 0;
+  m_endPoint6 = 0;
+  
+  //TODO: fix, should we add the master?
+  // the master is always a new socket, hence we should register it
+  //bool result = m_tcp->AddSocket(master);
+  //NS_ASSERT_MSG(result, "Could not register master");
+  
+  //  master->SetupCallback();
+  
   meta->AddSubflow(master);
-
-  // TODO convert this into a Socket member function so that
-  // members can become private again
-  meta->SetSendCallback(cbSend);
-  meta->SetConnectCallback (cbConnectSuccess, cbConnectFail);   // Ok
-  meta->SetDataSentCallback (cbDataSent);
-  meta->SetRecvCallback (cbRcv);
-  meta->SetAcceptCallback(connectionRequest, newConnectionCreated);
+  
   return master;
 }
   
@@ -2001,7 +1974,7 @@ TcpSocketBase::ProcessSynSent (Ptr<Packet> packet, const TcpHeader& tcpHeader)
            && m_tcb->m_nextTxSequence + SequenceNumber32 (1) == tcpHeader.GetAckNumber ())
     { // Handshake completed
 
-      Ptr<TcpSocketBase> master = nullptr;
+      Ptr<MpTcpSubflow> master = nullptr;
       // TODO separate between
       if(tcpHeader.HasOption(TcpOption::MPTCP)
          && ProcessOptionMpTcp (tcpHeader.GetOption (TcpOption::MPTCP)))
@@ -2024,18 +1997,19 @@ TcpSocketBase::ProcessSynSent (Ptr<Packet> packet, const TcpHeader& tcpHeader)
       if(master)
       {
         master->EstablishConnection (packet, tcpHeader, true);
-        EstablishConnection (packet, tcpHeader, false);
+        master->GetMeta()->EstablishConnection (packet, tcpHeader, false);
+        
+        Simulator::ScheduleNow (&TcpSocketBase::ConnectionSucceeded, master);
       }
       else
       {
         EstablishConnection (packet, tcpHeader, true);
+        SendPendingData (m_connected);
+        Simulator::ScheduleNow (&TcpSocketBase::ConnectionSucceeded, this);
+        // Always respond to first data packet to speed up the connection.
+        // Remove to get the behaviour of old NS-3 code.
+        m_delAckCount = m_delAckMaxCount;
       }
-      
-      SendPendingData (m_connected);
-      Simulator::ScheduleNow (&TcpSocketBase::ConnectionSucceeded, this);
-      // Always respond to first data packet to speed up the connection.
-      // Remove to get the behaviour of old NS-3 code.
-      m_delAckCount = m_delAckMaxCount;
     }
   else
     { // Other in-sequence input
@@ -3908,11 +3882,11 @@ TcpSocketBase::SetCongestionControlAlgorithm (Ptr<TcpCongestionOps> algo)
 Ptr<TcpSocketBase>
 TcpSocketBase::Fork (void)
 {
-//  return CopyObject<TcpSocketBase> (this);
-  char *addr = new char[sizeof(std::aligned_storage<sizeof(MpTcpSocketBase)>::type)];
-  Ptr<TcpSocketBase> p = Ptr<TcpSocketBase> (new (addr) TcpSocketBase(*this), false);
-//  return CopyObject<TcpSocketBase> (this);
-  return p;
+  Ptr<TcpSocketBase> newSock = CopyObject<TcpSocketBase> (this);
+  Ptr<TcpSocketWrapper> wrapper = CreateObject<TcpSocketWrapper>();
+  wrapper->SetSocket(newSock);
+  
+  return newSock;
 }
 
 uint32_t

@@ -153,6 +153,10 @@ MpTcpSocketBase::MpTcpSocketBase(const TcpSocketBase& sock) :
     //
     NS_LOG_FUNCTION(this);
     NS_LOG_LOGIC("Copying from TcpSocketBase");
+  
+  m_endPoint = sock.GetEndpoint();
+  m_endPoint6 = sock.GetEndpoint6();
+  
     m_remotePathIdManager = Create<MpTcpPathIdManagerImpl>();
 
   CreateScheduler(m_schedulerTypeId);

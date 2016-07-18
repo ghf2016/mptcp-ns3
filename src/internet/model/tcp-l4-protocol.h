@@ -27,6 +27,7 @@
 #include "ns3/ipv6-address.h"
 #include "ns3/sequence-number.h"
 #include "ip-l4-protocol.h"
+#include "tcp-socket-wrapper.h"
 
 
 namespace ns3 {
@@ -296,7 +297,7 @@ private:
   Ipv6EndPointDemux *m_endPoints6; //!< A list of IPv6 end points.
   TypeId m_rttTypeId;              //!< The RTT Estimator TypeId
   TypeId m_congestionTypeId;       //!< The socket TypeId
-  std::vector<Ptr<TcpSocketBase> > m_sockets;      //!< list of sockets
+  std::vector<Ptr<TcpSocketWrapper> > m_sockets;      //!< list of sockets (or rather socket proxies)
   IpL4Protocol::DownTargetCallback m_downTarget;   //!< Callback to send packets over IPv4
   IpL4Protocol::DownTargetCallback6 m_downTarget6; //!< Callback to send packets over IPv6
 

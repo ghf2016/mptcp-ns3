@@ -496,6 +496,9 @@ public:
   virtual Time     GetPersistTimeout (void) const;
   virtual bool     GetAllowBroadcast (void) const;
   
+  virtual Ipv4EndPoint* GetEndpoint () const;
+  virtual Ipv6EndPoint* GetEndpoint6 () const;
+  
   /**
    * \brief Check to see if we can send data in the Tx window.
    *
