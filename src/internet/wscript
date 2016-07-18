@@ -162,6 +162,7 @@ def build(bld):
         'model/tcp-option-winscale.cc',
         'model/tcp-option-ts.cc',
         'model/tcp-option-mptcp.cc',
+        'model/tcp-socket-wrapper.cc',
         'model/mptcp-crypto.cc',
         'model/mptcp-socket-base.cc',
         'model/mptcp-subflow.cc',
@@ -300,6 +301,7 @@ def build(bld):
         'model/tcp-header.h',
         'model/tcp-option.h',
         'model/tcp-option-mptcp.h',
+        'model/tcp-socket-wrapper.h',
         'model/icmpv4.h',
         'model/icmpv6-header.h',
         # used by routing
