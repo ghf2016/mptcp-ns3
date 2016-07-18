@@ -258,6 +258,8 @@
 		ED6E22111C5D24B800028B56 /* tcp-error-model.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED6E21E61C5D136F00028B56 /* tcp-error-model.cc */; };
 		ED6E22131C5D619400028B56 /* tcp-handshake-ack-drop-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED6E22121C5D619400028B56 /* tcp-handshake-ack-drop-test.cc */; };
 		ED712CAF197802890074513E /* libstats.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7D1D5160523BF00ECD480 /* libstats.dylib */; };
+		ED7141381D3D29E900BAEE7A /* tcp-socket-wrapper.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED7141361D3D29E900BAEE7A /* tcp-socket-wrapper.cc */; };
+		ED7141391D3D29E900BAEE7A /* tcp-socket-wrapper.h in Headers */ = {isa = PBXBuildFile; fileRef = ED7141371D3D29E900BAEE7A /* tcp-socket-wrapper.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED77A9F31BFF9266001E1B26 /* build-profile.h in Headers */ = {isa = PBXBuildFile; fileRef = ED77A9F21BFF9266001E1B26 /* build-profile.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED77A9FA1BFF92FE001E1B26 /* tcp-congestion-ops.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED77A9F41BFF92FE001E1B26 /* tcp-congestion-ops.cc */; };
 		ED77A9FB1BFF92FE001E1B26 /* tcp-congestion-ops.h in Headers */ = {isa = PBXBuildFile; fileRef = ED77A9F51BFF92FE001E1B26 /* tcp-congestion-ops.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -3931,6 +3933,8 @@
 		ED6E21FE1C5D22F300028B56 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		ED6E22051C5D23C400028B56 /* tcp-close-test.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-close-test.cc"; sourceTree = "<group>"; };
 		ED6E22121C5D619400028B56 /* tcp-handshake-ack-drop-test.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-handshake-ack-drop-test.cc"; sourceTree = "<group>"; };
+		ED7141361D3D29E900BAEE7A /* tcp-socket-wrapper.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-socket-wrapper.cc"; sourceTree = "<group>"; };
+		ED7141371D3D29E900BAEE7A /* tcp-socket-wrapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "tcp-socket-wrapper.h"; sourceTree = "<group>"; };
 		ED77A9F21BFF9266001E1B26 /* build-profile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "build-profile.h"; sourceTree = "<group>"; };
 		ED77A9F41BFF92FE001E1B26 /* tcp-congestion-ops.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-congestion-ops.cc"; sourceTree = "<group>"; };
 		ED77A9F51BFF92FE001E1B26 /* tcp-congestion-ops.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "tcp-congestion-ops.h"; sourceTree = "<group>"; };
@@ -6193,6 +6197,8 @@
 				ED61BDA5199CD61000839C45 /* tcp-socket-factory-impl.h */,
 				ED61BDA6199CD61000839C45 /* tcp-socket-factory.cc */,
 				ED61BDA7199CD61000839C45 /* tcp-socket-factory.h */,
+				ED7141361D3D29E900BAEE7A /* tcp-socket-wrapper.cc */,
+				ED7141371D3D29E900BAEE7A /* tcp-socket-wrapper.h */,
 				ED61BDA8199CD61000839C45 /* tcp-socket.cc */,
 				ED61BDA9199CD61000839C45 /* tcp-socket.h */,
 				ED61BDAC199CD61000839C45 /* tcp-tx-buffer.cc */,
@@ -9968,6 +9974,7 @@
 				ED7C6C72199D2809009165B6 /* arp-cache.h in Headers */,
 				ED05A6981C9871D20008E602 /* rip-helper.h in Headers */,
 				ED7C6C74199D280A009165B6 /* icmpv6-l4-protocol.h in Headers */,
+				ED7141391D3D29E900BAEE7A /* tcp-socket-wrapper.h in Headers */,
 				ED7C6C81199D280A009165B6 /* ipv6-interface.h in Headers */,
 				ED7C6C89199D280B009165B6 /* ndisc-cache.h in Headers */,
 				ED05A68F1C986F2A0008E602 /* rip-header.h in Headers */,
@@ -10782,6 +10789,7 @@
 				ED91DA761D2167E200A69097 /* mptcp-socket-base.cc in Sources */,
 				ED7C6C22199D201B009165B6 /* tcp-westwood.cc in Sources */,
 				ED7C6C1C199D201B009165B6 /* tcp-rx-buffer.cc in Sources */,
+				ED7141381D3D29E900BAEE7A /* tcp-socket-wrapper.cc in Sources */,
 				ED7C6C21199D201B009165B6 /* tcp-tx-buffer.cc in Sources */,
 				ED4B0EA719F0249800C2232D /* tcp-option.cc in Sources */,
 				ED4B0EA419F0249800C2232D /* tcp-option-rfc793.cc in Sources */,
