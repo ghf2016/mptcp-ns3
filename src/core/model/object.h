@@ -300,6 +300,10 @@ private:
   friend Ptr<T> CopyObject (Ptr<T> object);
   template <typename T>
   friend Ptr<T> CopyObject (Ptr<const T> object);
+  template <typename T1, typename T2>
+  friend Ptr<T1> CopyObject (Ptr<T2> object);
+  template <typename T1, typename T2>
+  friend Ptr<T1> CopyObject (Ptr<const T2> object);
   /**@}*/
   
   /**
@@ -434,6 +438,10 @@ template <typename T>
 Ptr<T> CopyObject (Ptr<const T> object);
 template <typename T>
 Ptr<T> CopyObject (Ptr<T> object);
+template <typename T1, typename T2>
+Ptr<T1> CopyObject (Ptr<T2> object);
+template <typename T1, typename T2>
+Ptr<T1> CopyObject (Ptr<const T2> object);
 
 } // namespace ns3
 
@@ -499,6 +507,20 @@ Ptr<T> CopyObject (Ptr<const T> object)
 {
   Ptr<T> p = Ptr<T> (new T (*PeekPointer (object)), false);
   NS_ASSERT (p->GetInstanceTypeId () == object->GetInstanceTypeId ());
+  return p;
+}
+  
+template <typename T1, typename T2>
+Ptr<T1> CopyObject (Ptr<T2> object)
+{
+  Ptr<T1> p = Ptr<T1> (new T1 (*PeekPointer (object)), false);
+  return p;
+}
+
+template <typename T1, typename T2>
+Ptr<T1> CopyObject (Ptr<const T2> object)
+{
+  Ptr<T1> p = Ptr<T1> (new T1 (*PeekPointer (object)), false);
   return p;
 }
 
