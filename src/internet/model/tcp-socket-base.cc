@@ -1598,7 +1598,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
           m_congestionControl->CongestionStateSet (m_tcb, TcpSocketState::CA_DISORDER);
           m_tcb->m_congState = TcpSocketState::CA_DISORDER;
 
-          if (m_limitedTx && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) > 0)
+          if (m_limitedTx && !m_mptcpEnabled && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) > 0)
             {
               // RFC3042 Limited transmit: Send a new packet for each duplicated ACK before fast retransmit
               NS_LOG_INFO ("Limited transmit");
@@ -1628,13 +1628,12 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
                            m_tcb->m_ssThresh << " at fast recovery seqnum " << m_recover);
               DoRetransmit ();
             }
-          else if (m_limitedTx && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) > 0)
+          else if (m_limitedTx && !m_mptcpEnabled && m_txBuffer->SizeFromSequence (m_tcb->m_nextTxSequence) > 0)
             {
               // RFC3042 Limited transmit: Send a new packet for each duplicated ACK before fast retransmit
               NS_LOG_INFO ("Limited transmit");
-              NS_LOG_UNCOND("Limited transmit should be currently disabled");
-              //uint32_t sz = SendDataPacket (m_tcb->m_nextTxSequence, m_tcb->m_segmentSize, true);
-              //m_tcb->m_nextTxSequence += sz;
+              uint32_t sz = SendDataPacket (m_tcb->m_nextTxSequence, m_tcb->m_segmentSize, true);
+              m_tcb->m_nextTxSequence += sz;
             }
         }
       else if (m_tcb->m_congState == TcpSocketState::CA_RECOVERY)
