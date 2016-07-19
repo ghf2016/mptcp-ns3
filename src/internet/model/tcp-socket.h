@@ -38,6 +38,7 @@ class TcpSocketWrapper;
 
 /**
  * \ingroup socket
+ * \ingroup tcp
  *
  * \brief (abstract) base class of all TcpSockets
  *

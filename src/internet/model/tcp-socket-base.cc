@@ -623,6 +623,7 @@ TcpSocketBase::Bind (const Address &address)
       InetSocketAddress transport = InetSocketAddress::ConvertFrom (address);
       Ipv4Address ipv4 = transport.GetIpv4 ();
       uint16_t port = transport.GetPort ();
+      SetIpTos (transport.GetTos ());
       if (ipv4 == Ipv4Address::GetAny () && port == 0)
         {
           m_endPoint = m_tcp->Allocate ();
@@ -758,6 +759,7 @@ TcpSocketBase::Connect (const Address & address)
         }
       InetSocketAddress transport = InetSocketAddress::ConvertFrom (address);
       m_endPoint->SetPeer (transport.GetIpv4 (), transport.GetPort ());
+      SetIpTos (transport.GetTos ());
       m_endPoint6 = 0;
 
       // Get the appropriate local address and port number from the routing protocol and set up endpoint
@@ -1283,6 +1285,10 @@ void
 TcpSocketBase::DoForwardUp (Ptr<Packet> packet, const Address &fromAddress,
                             const Address &toAddress)
 {
+  // in case the packet still has a priority tag attached, remove it
+  SocketPriorityTag priorityTag;
+  packet->RemovePacketTag (priorityTag);
+
   // Peel off TCP header and do validity checking
   TcpHeader tcpHeader;
   uint32_t bytesRemoved = packet->RemoveHeader (tcpHeader);
@@ -2426,7 +2432,7 @@ TcpSocketBase::SendPacket(TcpHeader header, Ptr<Packet> p)
    * if both options are set. Once the packet got to layer three, only
    * the corresponding tags will be read.
    */
-  if (IsManualIpTos ())
+  if (GetIpTos ())
     {
       SocketIpTosTag ipTosTag;
       ipTosTag.SetTos (GetIpTos ());
@@ -2453,11 +2459,25 @@ TcpSocketBase::SendPacket(TcpHeader header, Ptr<Packet> p)
       ipHopLimitTag.SetHopLimit (GetIpv6HopLimit ());
       p->AddPacketTag (ipHopLimitTag);
     }
+  
+  uint8_t priority = GetPriority ();
+  if (priority)
+  {
+    SocketPriorityTag priorityTag;
+    priorityTag.SetPriority (priority);
+    p->ReplacePacketTag (priorityTag);
+  }
 
   AddOptions (header);
+
+  if (m_endPoint == 0 && m_endPoint6 == 0)
+    {
+      NS_LOG_WARN ("Failed to send empty packet due to null endpoint");
+      return;
+    }
   
   m_txTrace (p, header, this);
-
+  
   if (m_endPoint != 0)
     {
       m_tcp->SendPacket (p, header, m_endPoint->GetLocalAddress (),
@@ -2471,10 +2491,11 @@ TcpSocketBase::SendPacket(TcpHeader header, Ptr<Packet> p)
     }
 
 
-  if (header.GetFlags() & TcpHeader::ACK)
-    { // If sending an ACK, cancel the delay ACK as well
+  if ((header.GetFlags() & TcpHeader::ACK) && !m_delAckEvent.IsExpired())
+    { // If sending an ACK, cancel the delayed ACK as well
       m_delAckEvent.Cancel ();
       m_delAckCount = 0;
+      
       if (m_highTxAck < header.GetAckNumber ())
       {
         m_highTxAck = header.GetAckNumber ();

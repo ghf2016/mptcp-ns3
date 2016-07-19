@@ -469,6 +469,26 @@ public:
   virtual bool IsRecvPktInfo () const;
   
   /**
+   * \brief Manually set the socket priority
+   *
+   * This method corresponds to using setsockopt () SO_PRIORITY of
+   * real network or BSD sockets.
+   *
+   * \param priority The socket priority (in the range 0..6)
+   */
+  virtual void SetPriority (uint8_t priority);
+  
+  /**
+   * \brief Query the priority value of this socket
+   *
+   * This method corresponds to using getsockopt () SO_PRIORITY of real network
+   * or BSD sockets.
+   *
+   * \return The priority value
+   */
+  virtual uint8_t GetPriority (void) const;
+  
+  /**
    * \brief Manually set IP Type of Service field
    *
    * This method corresponds to using setsockopt () IP_TOS of
@@ -675,13 +695,6 @@ public:
   virtual void Ipv6LeaveGroup (void);
   
 protected:
-  
-  /**
-   * \brief Checks if the socket has a specific IPv4 ToS set
-   *
-   * \returns true if the socket has a IPv4 ToS set, false otherwise.
-   */
-  virtual bool IsManualIpTos (void) const;
   
   /**
    * \brief Checks if the socket has a specific IPv6 Tclass set

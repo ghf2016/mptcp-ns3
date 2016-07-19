@@ -53,6 +53,12 @@ QueueItem::GetPacketSize (void) const
   return m_packet->GetSize ();
 }
 
+bool
+QueueItem::GetUint8Value (QueueItem::Uint8Values field, uint8_t& value) const
+{
+  return false;
+}
+
 void
 QueueItem::Print (std::ostream& os) const
 {
@@ -150,7 +156,7 @@ NetDeviceQueueInterface::GetTxQueue (uint8_t i) const
 }
 
 uint8_t
-NetDeviceQueueInterface::GetTxQueuesN (void) const
+NetDeviceQueueInterface::GetNTxQueues (void) const
 {
   return m_txQueuesVector.size ();
 }
@@ -190,14 +196,10 @@ NetDeviceQueueInterface::SetSelectQueueCallback (SelectQueueCallback cb)
   m_selectQueueCallback = cb;
 }
 
-uint8_t
-NetDeviceQueueInterface::GetSelectedQueue (Ptr<QueueItem> item) const
+NetDeviceQueueInterface::SelectQueueCallback
+NetDeviceQueueInterface::GetSelectQueueCallback (void) const
 {
-  if (!m_selectQueueCallback.IsNull ())
-  {
-    return m_selectQueueCallback (item);
-  }
-  return 0;
+  return m_selectQueueCallback;
 }
 
 NS_OBJECT_ENSURE_REGISTERED (NetDevice);

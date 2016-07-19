@@ -119,8 +119,8 @@ must be of type :cpp:class:`ns3::SocketFactory`, so configuring the underlying
 socket type must be done by twiddling the attribute associated with the
 underlying TcpL4Protocol object.  The easiest way to get at this would be 
 through the attribute configuration system.  In the below example,
-the Node container "n0n1" is accessed
-to get the zeroth element, and a socket is created on this node::
+the Node container "n0n1" is accessed to get the zeroth element, and a socket is
+created on this node::
 
   // Create and bind the socket...
   TypeId tid = TypeId::LookupByName ("ns3::TcpNewReno");
@@ -144,8 +144,197 @@ the specified node, one would have to do something like::
 
 Once a TCP socket is created, one will want to follow conventional socket logic
 and either connect() and send() (for a TCP client) or bind(), listen(), and
-accept() (for a TCP server). See :ref:`Sockets-APIs` for a review of
-how sockets are used in |ns3|.
+accept() (for a TCP server).
+Please note that applications usually create the sockets they use automatically,
+and so is not straightforward to connect direcly to them using pointers. Please
+refer to the source code of your preferred application to discover how and when
+it creates the socket.
+
+TCP Socket interaction and interface with Application layer
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In the following there is an analysis on the public interface of the TCP socket,
+and how it can be used to interact with the socket itself. An analysis of the
+callback fired by the socket is also carried out. Please note that, for
+the sake of clarity, we will use the terminology "Sender" and "Receiver" to clearly
+divide the functionality of the socket. However, in TCP these two roles can be
+applied at the same time (i.e. a socket could be a sender and a receiver at the
+same time): our distinction does not lose generality, since the following
+definition can be applied to both sockets in case of full-duplex mode.
+
+----------
+
+**TCP state machine (for commodity use)**
+
+.. _fig-tcp-state-machine:
+
+.. figure:: figures/tcp-state-machine.*
+   :align: center
+
+   TCP State machine
+
+In ns-3 we are fully compliant with the state machine depicted in 
+Figure :ref:`fig-tcp-state-machine`.
+
+----------
+
+**Public interface for receivers (e.g. servers receiving data)**
+
+*Bind()*
+  Bind the socket to an address, or to a general endpoint. A general endpoint
+  is an endpoint with an ephemeral port allocation (that is, a random port
+  allocation) on the 0.0.0.0 IP address. For instance, in current applications,
+  data senders usually binds automatically after a *Connect()* over a random
+  port. Consequently, the connection will start from this random port towards
+  the well-defined port of the receiver. The IP 0.0.0.0 is then translated by
+  lower layers into the real IP of the device.
+
+*Bind6()*
+  Same as *Bind()*, but for IPv6.
+
+*BindToNetDevice()*
+  Bind the socket to the specified NetDevice, creating a general endpoint.
+
+*Listen()*
+  Listen on the endpoint for an incoming connection. Please note that this
+  function can be called only in the TCP CLOSED state, and transit in the
+  LISTEN state. When an incoming request for connection is detected (i.e. the
+  other peer invoked *Connect()*) the application will be signaled with the
+  callback *NotifyConnectionRequest* (set in *SetAcceptCallback()* beforehand).
+  If the connection is accepted (the default behavior, when the associated
+  callback is a null one) the Socket will fork itself, i.e. a new socket is
+  created to handle the incoming data/connection, in the state SYN_RCVD. Please
+  note that this newly created socket is not connected anymore to the callbacks
+  on the "father" socket (e.g. DataSent, Recv); the pointer of the newly
+  created socket is provided in the Callback *NotifyNewConnectionCreated* (set
+  beforehand in *SetAcceptCallback*), and should be used to connect new
+  callbacks to interesting events (e.g. Recv callback). After receiving the ACK
+  of the SYN-ACK, the socket will set the congestion control, move into
+  ESTABLISHED state, and then notify the application with
+  *NotifyNewConnectionCreated*.
+
+*ShutdownSend()*
+  Signal a termination of send, or in other words revents data from being added
+  to the buffer. After this call, if buffer is already empty, the socket
+  will send a FIN, otherwise FIN will go when buffer empties. Please note
+  that this is useful only for modeling "Sink" applications. If you have
+  data to transmit, please refer to the *Send()* / *Close()* combination of
+  API.
+
+*GetRxAvailable()*
+  Get the amount of data that could be returned by the Socket in one or multiple
+  call to Recv or RecvFrom. Please use the Attribute system to configure the
+  maximum available space on the receiver buffer (property "RcvBufSize").
+
+*Recv()*
+  Grab data from the TCP socket. Please remember that TCP is a stream socket,
+  and it is allowed to concatenate multiple packets into bigger ones. If no data
+  is present (i.e. *GetRxAvailable* returns 0) an empty packet is returned.
+  Set the callback *RecvCallback* through *SetRecvCallback()* in order to have
+  the application automatically notified when some data is ready to be read.
+  It's important to connect that callback to the newly created socket in case
+  of forks.
+
+*RecvFrom()*
+  Same as Recv, but with the source address as parameter.
+
+-------------------
+
+**Public interface for senders (e.g. clients uploading data)**
+
+*Connect()*
+  Set the remote endpoint, and try to connect to it. The local endpoint should
+  be set before this call, or otherwise an ephemeral one will be created. The
+  TCP then will be in the SYN_SENT state. If a SYN-ACK is received, the TCP will
+  setup the congestion control, and then call the callback
+  *ConnectionSucceeded*.
+
+*GetTxAvailable()*
+  Return the amount of data that can be stored in the TCP Tx buffer. Set this
+  property through the Attribute system ("SndBufSize").
+
+*Send()*
+  Send the data into the TCP Tx buffer. From there, the TCP rules will decide
+  if, and when, this data will be transmitted. Please note that, if the tx
+  buffer has enough data to fill the congestion (or the receiver) window, dynamically
+  varying the rate at which data is injected in the TCP buffer does not have any
+  noticeable effect on the amount of data transmitted on the wire, that will
+  continue to be decided by the TCP rules.
+
+*SendTo()*
+  Same as *Send()*.
+
+*Close()*
+  Terminate the local side of the connection, by sending a FIN (after all data
+  in the tx buffer has been transmitted). This does not prevent the socket in
+  receiving data, and employing retransmit mechanism if losses are detected. If
+  the application calls *Close()* with unread data in its rx buffer, the socket
+  will send a reset. If the socket is in the state SYN_SENT, CLOSING, LISTEN or
+  LAST_ACK, after that call the application will be notified with
+  *NotifyNormalClose()*. In all the other cases, the notification is delayed
+  (see *NotifyNormalClose()*).
+
+-----------------------------------------
+
+**Public callbacks**
+
+These callbacks are called by the TCP socket to notify the application of
+interesting events. We will refer to these with the protected name used in
+socket.h, but we will provide the API function to set the pointers to these
+callback as well.
+
+*NotifyConnectionSucceeded*: *SetConnectCallback*, 1st argument
+  Called in the SYN_SENT state, before moving to ESTABLISHED. In other words, we
+  have sent the SYN, and we received the SYN-ACK: the socket prepare the
+  sequence numbers, send the ACK for the SYN-ACK, try to send out more data (in
+  another segment) and then invoke this callback. After this callback, it
+  invokes the NotifySend callback.
+
+*NotifyConnectionFailed*: *SetConnectCallback*, 2nd argument
+  Called after the SYN retransmission count goes to 0. SYN packet is lost
+  multiple time, and the socket give up.
+
+*NotifyNormalClose*: *SetCloseCallbacks*, 1st argument
+  A normal close is invoked. A rare case is when we receive an RST segment (or a
+  segment with bad flags) in normal states. All other cases are:
+  - The application tries to *Connect()* over an already connected socket
+  - Received an ACK for the FIN sent, with or without the FIN bit set (we are in LAST_ACK)
+  - The socket reaches the maximum amount of retries in retransmitting the SYN (*)
+  - We receive a timeout in the LAST_ACK state
+  - After 2*Maximum Segment Lifetime seconds passed since the socket entered the TIME_WAIT state.
+
+*NotifyErrorClose*: *SetCloseCallbacks*, 2nd argument
+  Invoked when we send an RST segment (for whatever reason) or we reached the
+  maximum amount of data retries.
+
+*NotifyConnectionRequest*: *SetAcceptCallback*, 1st argument
+  Invoked in the LISTEN state, when we receive a SYN. The return value indicates
+  if the socket should accept the connection (return true) or should ignore it
+  (return false).
+
+*NotifyNewConnectionCreated*: *SetAcceptCallback*, 2nd argument
+  Invoked when from SYN_RCVD the socket passes to ESTABLISHED, and after setting
+  up the congestion control, the sequence numbers, and processed the incoming
+  ACK. If there is some space in the buffer, *NotifySend* is called shortly
+  after this callback. The Socket pointer, passed with this callback, is the
+  newly created socket, after a Fork().
+
+*NotifyDataSent*: *SetDataSentCallback*
+  The Socket notifies the application that some bytes has been transmitted on
+  the IP level. These bytes could still be lost in the node (traffic control
+  layer) or in the network.
+
+*NotifySend*: *SetSendCallback*
+  Invoked if there is some space in the tx buffer when entering the ESTABLISHED
+  state (e.g. after the ACK for SYN-ACK is received), after the connection
+  succeeds (e.g. after the SYN-ACK is received) and after each new ack (i.e.
+  that advances SND.UNA).
+
+*NotifyDataRecv*: *SetRecvCallback*
+  Called when in the receiver buffere there are in-order bytes, and when in
+  FIN_WAIT_1 or FIN_WAIT_2 the socket receive a in-sequence FIN (that can carry
+  data).
+
 
 Congestion Control Algorithms
 +++++++++++++++++++++++++++++
@@ -166,17 +355,16 @@ avoidance. Taken from RFC 5681:
   reaches it, as noted above) or when congestion is observed.  While
   traditionally TCP implementations have increased cwnd by precisely
   SMSS bytes upon receipt of an ACK covering new data, we RECOMMEND
-  that TCP implementations increase cwnd, per:
-
-  cwnd += min (N, SMSS)                      (2)
-
+  that TCP implementations increase cwnd, per Equation :eq:`newrenocongavoid`,
   where N is the number of previously unacknowledged bytes acknowledged
   in the incoming ACK.
 
-During congestion avoidance, cwnd is incremented by roughly 1 full-sized
-segment per round-trip time (RTT).
+.. math:: cwnd += min (N, SMSS)
+   :label: newrenocongavoid
 
-For each congestion event, the slow start threshold is halved.
+During congestion avoidance, cwnd is incremented by roughly 1 full-sized
+segment per round-trip time (RTT), and for each congestion event, the slow
+start threshold is halved.
 
 High Speed
 ^^^^^^^^^^
@@ -192,7 +380,7 @@ of congestion collapse.
 
 Mathematically:
 
-  cWnd = cWnd + a(cWnd)/cWnd
+.. math::  cWnd = cWnd + \frac{a(cWnd)}{cWnd}
 
 The function a() is calculated using a fixed RTT the value 100 ms (the
 lookup table for this function is taken from RFC 3649). For each congestion
@@ -200,7 +388,7 @@ event, the slow start threshold is decreased by a value that depends on the
 size of the slow start threshold itself. Then, the congestion window is set
 to such value.
 
-   cWnd <- (1-b(cWnd))cWnd
+.. math::   cWnd = (1-b(cWnd)) \cdot cWnd
 
 The lookup table for the function b() is taken from the same RFC.
 More informations at: http://dl.acm.org/citation.cfm?id=2756518
@@ -241,12 +429,14 @@ with the expected throughput calculated in Equation (2). The difference between
 these 2 sending rates in Equation (3) reflects the amount of extra packets being
 queued at the bottleneck.
 
-  actual = cwnd / RTT (1)
-  expected = cwnd / BaseRTT (2)
-  diff = expected - actual (3)
+.. math::
+
+   actual &= \frac{cWnd}{RTT}        \\
+   expected &= \frac{cWnd}{BaseRTT}  \\
+   diff &= expected - actual
 
 To avoid congestion, Vegas linearly increases/decreases its congestion window
-to ensure the diff value fall between the 2 predefined thresholds, alpha and
+to ensure the diff value fall between the two predefined thresholds, alpha and
 beta. diff and another threshold, gamma, are used to determine when Vegas
 should change from its slow-start mode to linear increase/decrease mode.
 Following the implementation of Vegas in Linux, we use 2, 4, and 1 as the
@@ -262,7 +452,7 @@ a highspeed wide area network by altering NewReno congestion window adjustment
 algorithm.  When congestion has not been detected, for each ACK received in an
 RTT, Scalable increases its cwnd per:
 
-  cwnd = cwnd + 0.01                  (1)
+.. math::  cwnd = cwnd + 0.01
 
 Following Linux implementation of Scalable, we use 50 instead of 100 to account
 for delayed ACK.
@@ -270,8 +460,7 @@ for delayed ACK.
 On the first detection of congestion in a given RTT, cwnd is reduced based on
 the following equation:
 
-  cwnd = cwnd - ceil(0.125 * cwnd)       (2)
-
+.. math::  cwnd = cwnd - ceil(0.125 \cdot cwnd)
 
 More informations at: http://dl.acm.org/citation.cfm?id=956989
 
@@ -285,9 +474,14 @@ congestive and non-congestive states.
 
 The backlog (the number of packets accumulated at the bottleneck queue) is
 calculated using Equation (1):
-  N = Actual * (RTT - BaseRTT) = Diff * BaseRTT        (1)
-where
-  Diff = Expected - Actual = cwnd/BaseRTT - cwnd/RTT
+
+.. math::  N &= Actual \cdot (RTT - BaseRTT) \\
+             &= Diff \cdot BaseRTT
+
+where:
+
+.. math::  Diff &= Expected - Actual \\
+                &= \frac{cWnd}{BaseRTT} - \frac{cWnd}{RTT}
 
 Veno makes decision on cwnd modification based on the calculated N and its
 predefined threshold beta.
@@ -334,30 +528,34 @@ YeAH
 
 YeAH-TCP (Yet Another HighSpeed TCP) is a heuristic designed to balance various
 requirements of a state-of-the-art congestion control algorithm:
-1) fully exploit the link capacity of high BDP networks while inducing a small
-number of congestion events
-2) compete friendly with Reno flows
-3) achieve intra and RTT fairness
-4) robust to random losses
-5) achieve high performance regardless of buffer size
+
+
+1. fully exploit the link capacity of high BDP networks while inducing a small number of congestion events
+2. compete friendly with Reno flows
+3. achieve intra and RTT fairness
+4. robust to random losses
+5. achieve high performance regardless of buffer size
 
 YeAH operates between 2 modes: Fast and Slow mode.  In the Fast mode when the queue
 occupancy is small and the network congestion level is low, YeAH increments
 its congestion window according to the aggressive STCP rule.  When the number of packets
 in the queue grows beyond a threshold and the network congestion level is high, YeAH enters
 its Slow mode, acting as Reno with a decongestion algorithm.  YeAH employs Vegas' mechanism
-for calculating the backlog as in Equation (1).  The estimation of the network congestion
-level is shown in Equation (2).
+for calculating the backlog as in Equation :eq:`q_yeah`.  The estimation of the network congestion
+level is shown in Equation :eq:`l_yeah`.
 
-                  Q = (RTT - BaseRTT) (cwnd / RTT)    (1)
-                  L = (RTT - BaseRTT) / BaseRTT       (2)
+.. math::  Q = (RTT - BaseRTT) \cdot \frac{cWnd}{RTT}
+   :label: q_yeah
+
+.. math::  L = \frac{RTT - BaseRTT}{BaseRTT}
+   :label: l_yeah
 
 To ensure TCP friendliness, YeAH also implements an algorithm to detect the presence of legacy
 Reno flows.  Upon the receipt of 3 duplicate ACKs, YeAH decreases its slow start threshold
 according to Equation (3) if it's not competing with Reno flows.  Otherwise,  the ssthresh is
-halved as in Reno.
+halved as in Reno:
 
-                  ssthresh = min{max{cwnd/8, Q}, cwnd/2}
+.. math::  ssthresh = min(max(\frac{cWnd}{8}, Q), \frac{cWnd}{2})
 
 More information: http://www.csc.lsu.edu/~sjpark/cs7601/4-YeAH_TCP.pdf
 
@@ -377,56 +575,58 @@ robustness against sudden fluctuations in its delay sampling,
 Illinois allows the increment of alpha to alphaMax
 only if da stays below d1 for a some (theta) amount of time.
 
-                              / alphaMax          if da <= d1
-                      alpha =                                         (1)
-                              \ k1 / (k2 + da)    otherwise
+::
+
+                             / alphaMax          if da <= d1
+                     alpha =                                         (1)
+                             \ k1 / (k2 + da)    otherwise
 
                              / betaMin            if da <= d2
-                      beta =   k3 + k4da          if d2 < da < d3      (2)
+                     beta =    k3 + k4da          if d2 < da < d3      (2)
                              \ betaMax            otherwise
 
-where the calculations of k1, k2, k3, and k4 are shown in Equations (3), (4),
-(5), and (6).
- 
-           k1 = (dm - d1)(alphaMin)alphaMax / (alphaMax - alphaMin)    (3)
+where the calculations of k1, k2, k3, and k4 are shown in the following:
 
-           k2 = ((dm - d1)alphaMin / (alphaMax - alphaMin)) - d1       (4)
+.. math::
 
-           k3 = ((alphaMin)d3 - (alphaMax)d2) / (d3 - d2)              (5)
+   k1 &= \frac{(dm - d1) \cdot alphaMin \cdot alphaMax}{alphaMax - alphaMin}
 
-           k4 = (alphaMax - alphaMin) / (d3 - d2)                      (6)
+   k2 &= \frac{(dm - d1) \cdot alphaMin}{alphaMax - alphaMin} - d1
 
-with da the current average queueing delay calculated in Equation  (7) where
-                  Ta is the average RTT (sumRtt / cntRtt in the implementation) and
-                  Tmin (baseRtt in the implementation) is the minimum RTT ever seen
-     dm the maximum (average) queueing delay calculated in Equation (8) where
-                  Tmax (maxRtt in the implementation) is the maximum RTT ever seen
+   k3 &= \frac{alphaMin \cdot d3 - alphaMax \cdot d2}{d3 - d2}
 
-           da = Ta - Tmin          (7)
+   k4 &= \frac{alphaMax - alphaMin}{d3 - d2}
 
-           dm = Tmax - Tmin         (8)
+Other parameters include da (the current average queueing delay), and
+Ta (the average RTT, calculated as sumRtt / cntRtt in the implementation) and
+Tmin (baseRtt in the implementation) which is the minimum RTT ever seen.
+dm is the maximum (average) queueing delay, and Tmax (maxRtt in the
+implementation) is the maximum RTT ever seen.
 
-     di (i = 1,2,3) are calculated in Equation (9) (0 <= eta_1 < 1, and
-                   0 <= eta_2 <= eta_3 <=1)
+.. math::
 
-           di = (eta_i)dm            (9)
+   da &= Ta - Tmin
+
+   dm &= Tmax - Tmin
+
+   d_i &= eta_i \cdot dm
 
 Illinois only executes its adaptation of alpha and beta when cwnd exceeds a threshold
-called winThresh.  Otherwise, it sets alpha and beta to the base values of 1 and 0.5,
+called winThresh. Otherwise, it sets alpha and beta to the base values of 1 and 0.5,
 respectively.
 
 Following the implementation of Illinois in the Linux kernel, we use the following
 default parameter settings:
 
-     alphaMin = 0.3      (0.1 in the Illinois paper)
-     alphaMax = 10.0
-     betaMin = 0.125
-     betaMax = 0.5
-     winThresh = 15      (10 in the Illinois paper)
-     theta = 5
-     eta1 = 0.01
-     eta2 = 0.1
-     eta3 = 0.8
+* alphaMin = 0.3      (0.1 in the Illinois paper)
+* alphaMax = 10.0
+* betaMin = 0.125
+* betaMax = 0.5
+* winThresh = 15      (10 in the Illinois paper)
+* theta = 5
+* eta1 = 0.01
+* eta2 = 0.1
+* eta3 = 0.8
 
 More information: http://www.doi.org/10.1145/1190095.1190166
 

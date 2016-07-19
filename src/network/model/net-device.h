@@ -79,6 +79,24 @@ public:
   virtual uint32_t GetPacketSize (void) const;
 
   /**
+   * \enum Uint8Values
+   * \brief 1-byte fields of the packet whose value can be retrieved, if present
+   */
+  enum Uint8Values
+    {
+      IP_DSFIELD
+    };
+
+  /**
+   * \brief Retrieve the value of a given field from the packet, if present
+   * \param field the field whose value has to be retrieved
+   * \param value the output parameter to store the retrieved value
+   *
+   * \return true if the requested field is present in the packet, false otherwise.
+   */
+  virtual bool GetUint8Value (Uint8Values field, uint8_t &value) const;
+
+  /**
    * \brief Print the item contents.
    * \param os output stream in which the data should be printed.
    */
@@ -247,7 +265,7 @@ public:
    * \brief Get the number of device transmission queues.
    * \return the number of device transmission queues.
    */
-  uint8_t GetTxQueuesN (void) const;
+  uint8_t GetNTxQueues (void) const;
 
   /**
    * \brief Set the number of device transmission queues.
@@ -267,22 +285,19 @@ public:
    * \brief Set the select queue callback.
    * \param cb the callback to set.
    *
-   * Called by a device to set the select queue callback, i.e., the method used
-   * to select a device transmission queue for a given packet.
+   * Called by a multi-queue device to set the select queue callback, i.e., the
+   * method used to select a device transmission queue for a given packet.
    */
   void SetSelectQueueCallback (SelectQueueCallback cb);
 
   /**
-   * \brief Get the id of the transmission queue selected for the given packet.
+   * \brief Get the select queue callback.
+   * \return the select queue callback.
    *
-   * \param item the packet.
-   * \return the id of the transmission queue selected for the given packet.
-   *
-   * Called by the traffic control when it needs to determine which device
-   * transmission queue a given packet must be enqueued into. This function
-   * calls the select queue callback, if set by the device. Return 0 otherwise.
+   * Called by the traffic control layer to get the select queue callback set
+   * by a multi-queue device.
    */
-  uint8_t GetSelectedQueue (Ptr<QueueItem> item) const;
+  SelectQueueCallback GetSelectQueueCallback (void) const;
 
 protected:
   /**

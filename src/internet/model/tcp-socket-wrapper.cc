@@ -354,12 +354,6 @@ void TcpSocketWrapper::Ipv6LeaveGroup (void)
   m_socket->Ipv6LeaveGroup ();
 }
 
-bool TcpSocketWrapper::IsManualIpTos (void) const
-{
-  return m_socket->IsManualIpTos ();
-}
-
-
 bool TcpSocketWrapper::IsManualIpv6Tclass (void) const
 {
   return m_socket->IsManualIpv6Tclass ();
@@ -373,6 +367,16 @@ bool TcpSocketWrapper::IsManualIpTtl (void) const
 bool TcpSocketWrapper::IsManualIpv6HopLimit (void) const
 {
   return m_socket->IsManualIpv6HopLimit ();
+}
+  
+void TcpSocketWrapper::SetPriority (uint8_t priority)
+{
+  m_socket->SetPriority(priority);
+}
+
+uint8_t TcpSocketWrapper::GetPriority (void) const
+{
+  return m_socket->GetPriority();
 }
   
 }
