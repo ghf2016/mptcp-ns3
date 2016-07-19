@@ -43,7 +43,7 @@
 #include "tcp-socket-base.h"
 #include "tcp-congestion-ops.h"
 #include "rtt-estimator.h"
-#include "mptcp-socket-base.h"
+#include "mptcp-meta-socket.h"
 #include "tcp-congestion-ops.h"
 #include "mptcp-subflow.h"
 #include "tcp-option-mptcp.h"
@@ -465,7 +465,7 @@ TcpL4Protocol::LookupMpTcpToken (uint32_t token)
       it++)
   {
     Ptr<TcpSocket> sock = (*it)->GetSocket();
-    Ptr<MpTcpSocketBase> meta = DynamicCast<MpTcpSocketBase>( sock );
+    Ptr<MpTcpMetaSocket> meta = DynamicCast<MpTcpMetaSocket>( sock );
     Address addr;
     (*it)->GetSockName(addr);
     NS_LOG_DEBUG("Socket : " << sock << " socket of type=" << sock->GetInstanceTypeId());
@@ -529,7 +529,7 @@ TcpL4Protocol::Receive (Ptr<Packet> packet,
     // MPTCP related modification----------------------------
     // Extract MPTCP options if there is any
     Ptr<const TcpOptionMpTcpJoin> join;
-    Ptr<MpTcpSocketBase> meta;
+    Ptr<MpTcpMetaSocket> meta;
     
     // If it is a SYN packet with an MP_JOIN option
     if( (incomingTcpHeader.GetFlags() & TcpHeader::SYN)
@@ -539,7 +539,7 @@ TcpL4Protocol::Receive (Ptr<Packet> packet,
     {
       NS_LOG_DEBUG("This is indeed a MP_JOIN");
       
-      meta = DynamicCast<MpTcpSocketBase>(LookupMpTcpToken(join->GetPeerToken()));
+      meta = DynamicCast<MpTcpMetaSocket>(LookupMpTcpToken(join->GetPeerToken()));
       if(meta)
       {
         

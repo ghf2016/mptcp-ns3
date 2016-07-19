@@ -49,7 +49,7 @@ using namespace std;
 namespace ns3
 {
 
-class MpTcpSocketBase;
+class MpTcpMetaSocket;
 class MpTcpPathIdManager;
 class TcpOptionMpTcpDSS;
 class TcpOptionMpTcpMain;
@@ -132,7 +132,7 @@ public:
   /**
    * \param metaSocket
    */
-  virtual void SetMeta(Ptr<MpTcpSocketBase> metaSocket);
+  virtual void SetMeta(Ptr<MpTcpMetaSocket> metaSocket);
 //  virtual int
 //  Connect(const Address &address);      // Setup endpoint and call ProcessAction() to connect
 
@@ -334,7 +334,7 @@ TODO move this up to TcpSocketBase
 
 
 protected:
-  friend class MpTcpSocketBase;
+  friend class MpTcpMetaSocket;
 
   //
 
@@ -416,7 +416,7 @@ public:
   /**
    *
    */
-  Ptr<MpTcpSocketBase> GetMeta() const;
+  Ptr<MpTcpMetaSocket> GetMeta() const;
 
   /**
    * Not implemented
@@ -527,7 +527,7 @@ protected:
 
 
 protected:
-  Ptr<MpTcpSocketBase> m_metaSocket;    //!< Meta
+  Ptr<MpTcpMetaSocket> m_metaSocket;    //!< Meta
   virtual void SendPacket (TcpHeader header, Ptr<Packet> p);
 
 //private:

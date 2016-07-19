@@ -21,7 +21,7 @@
  */
 #include "ns3/mptcp-scheduler-round-robin.h"
 #include "ns3/mptcp-subflow.h"
-#include "ns3/mptcp-socket-base.h"
+#include "ns3/mptcp-meta-socket.h"
 #include "ns3/log.h"
 
 NS_LOG_COMPONENT_DEFINE("MpTcpSchedulerRoundRobin");
@@ -41,7 +41,7 @@ MpTcpSchedulerRoundRobin::GetTypeId (void)
 }
 
 
-//Ptr<MpTcpSocketBase> metaSock
+//Ptr<MpTcpMetaSocket> metaSock
 MpTcpSchedulerRoundRobin::MpTcpSchedulerRoundRobin() :
   MpTcpScheduler(),
   m_lastUsedFlowId(0),
@@ -58,7 +58,7 @@ MpTcpSchedulerRoundRobin::~MpTcpSchedulerRoundRobin (void)
 
 
 void
-MpTcpSchedulerRoundRobin::SetMeta(Ptr<MpTcpSocketBase> metaSock)
+MpTcpSchedulerRoundRobin::SetMeta(Ptr<MpTcpMetaSocket> metaSock)
 {
   NS_ASSERT(metaSock);
   NS_ASSERT_MSG(m_metaSock == 0, "SetMeta already called");

@@ -100,7 +100,7 @@ MpTcpCCOlia::~MpTcpCCOlia()
 //  return GetTypeId();
 //}
 
-Ptr<MpTcpSocketBase>
+Ptr<MpTcpMetaSocket>
 MpTcpCCOlia::ForkAsMeta(void)
 {
   NS_LOG_UNCOND ("Fork as meta" << this->GetInstanceTypeId() << " to " << GetTypeId());

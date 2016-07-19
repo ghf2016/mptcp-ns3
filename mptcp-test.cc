@@ -315,7 +315,7 @@ int main(int argc, char* argv[])
   //LogComponentEnable("MptcpCongestionOps", LOG_LEVEL_ALL);
   //LogComponentEnable("MptcpL4Protocol", LOG_LEVEL_ALL);
   //LogComponentEnable("MptcpMetaSocket", LOG_LEVEL_ALL);
-  //LogComponentEnable("MpTcpSocketBase", LOG_LEVEL_ALL);
+  //LogComponentEnable("MpTcpMetaSocket", LOG_LEVEL_ALL);
   //LogComponentEnable("MpTcpSubflow", LOG_LEVEL_ALL);
   
   //Set the simulator stop time

@@ -240,7 +240,7 @@ MpTcpPathIdManagerImpl::GetAllAdvertisedDestinations(std::vector<InetSocketAddre
 
 #if 0
 void
-MpTcpSocketBase::SetAddAddrCallback(Callback<bool, Ptr<Socket>, Address, uint8_t> addAddr)
+MpTcpMetaSocket::SetAddAddrCallback(Callback<bool, Ptr<Socket>, Address, uint8_t> addAddr)
 {
   NS_LOG_FUNCTION (this << &addAddr);
 
@@ -248,7 +248,7 @@ MpTcpSocketBase::SetAddAddrCallback(Callback<bool, Ptr<Socket>, Address, uint8_t
 }
 
 void
-MpTcpSocketBase::NotifyAddAddr(MpTcpAddressInfo info)
+MpTcpMetaSocket::NotifyAddAddr(MpTcpAddressInfo info)
 {
   if (!m_onAddAddr.IsNull())
   {

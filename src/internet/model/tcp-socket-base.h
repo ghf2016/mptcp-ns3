@@ -1007,15 +1007,15 @@ protected:
 
   /**
    * This function first generates a copy of the current socket as an MpTcpSubflow.
-   * Then it upgrades the current socket to an MpTcpSocketBase via the use of
+   * Then it upgrades the current socket to an MpTcpMetaSocket via the use of
    * "placement new", i.e. it does not allocate new memory but reuse the memory at "this"
-   * address to instantiate MpTcpSocketBase.
+   * address to instantiate MpTcpMetaSocket.
    * Finally the master socket is associated to the meta.
    *
-   * It is critical that enough memory was allocated beforehand to contain MpTcpSocketBase
+   * It is critical that enough memory was allocated beforehand to contain MpTcpMetaSocket
    * (see how it's done for now in TcpL4Protocol).
    * Ideally MpTcoSocketBase would take less memory than TcpSocketBase, so one of the goal should be to let
-   * MpTcpSocketBase inherit directly from TcpSocket rather than TcpSocketBase.
+   * MpTcpMetaSocket inherit directly from TcpSocket rather than TcpSocketBase.
    *
    * The function does not register the new subflow in m_tcp->AddSocket, this should be taken care
    * of afterwards.

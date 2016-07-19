@@ -31,7 +31,7 @@
 #include "ns3/abort.h"
 #include "ns3/log.h"
 #include "ns3/string.h"
-#include "ns3/mptcp-socket-base.h"
+#include "ns3/mptcp-meta-socket.h"
 #include "ns3/tcp-l4-protocol.h"
 #include "ns3/ipv4-l3-protocol.h"
 #include "ns3/error-model.h"
@@ -53,9 +53,9 @@ using namespace std;
 
 namespace ns3
 {
-NS_LOG_COMPONENT_DEFINE("MpTcpSocketBase");
+NS_LOG_COMPONENT_DEFINE("MpTcpMetaSocket");
 
-NS_OBJECT_ENSURE_REGISTERED(MpTcpSocketBase);
+NS_OBJECT_ENSURE_REGISTERED(MpTcpMetaSocket);
 
 
 static inline
@@ -96,30 +96,30 @@ GetMapping(Ptr<TcpOptionMpTcpDSS> dss)
 
 
 TypeId
-MpTcpSocketBase::GetTypeId(void)
+MpTcpMetaSocket::GetTypeId(void)
 {
-  static TypeId tid = TypeId("ns3::MpTcpSocketBase")
+  static TypeId tid = TypeId("ns3::MpTcpMetaSocket")
       // To some extent, would ideally derive directly from TcpSocket ?
       .SetParent<TcpSocketBase>()
-      .AddConstructor<MpTcpSocketBase>()
+      .AddConstructor<MpTcpMetaSocket>()
       .AddAttribute ("SocketType",
                "Socket type of TCP objects.",
                TypeIdValue (MpTcpSubflow::GetTypeId ()),
-               MakeTypeIdAccessor (&MpTcpSocketBase::m_subflowTypeId),
+               MakeTypeIdAccessor (&MpTcpMetaSocket::m_subflowTypeId),
                MakeTypeIdChecker ())
       .AddAttribute ("Scheduler",
                "How to generate the mappings",
                TypeIdValue (MpTcpScheduler::GetTypeId ()),
-               MakeTypeIdAccessor (&MpTcpSocketBase::m_schedulerTypeId),
+               MakeTypeIdAccessor (&MpTcpMetaSocket::m_schedulerTypeId),
                MakeTypeIdChecker ())
 // TODO rehabilitate
 //      .AddAttribute("SchedulingAlgorithm", "Algorithm for data distribution between m_subflows", EnumValue(Round_Robin),
-//          MakeEnumAccessor(&MpTcpSocketBase::SetDataDistribAlgo),
+//          MakeEnumAccessor(&MpTcpMetaSocket::SetDataDistribAlgo),
 //          MakeEnumChecker(Round_Robin, "Round_Robin"))
 //      .AddAttribute("Subflows", "The list of subflows associated to this protocol.",
 //          ObjectVectorValue(),
-//          MakeObjectVectorAccessor(&MpTcpSocketBase::m_subflows),
-//          MakeObjectVectorChecker<MpTcpSocketBase>())
+//          MakeObjectVectorAccessor(&MpTcpMetaSocket::m_subflows),
+//          MakeObjectVectorChecker<MpTcpMetaSocket>())
 //        )
 
 
@@ -128,7 +128,7 @@ MpTcpSocketBase::GetTypeId(void)
 }
 
 
-static const std::string containerNames[MpTcpSocketBase::Maximum] = {
+static const std::string containerNames[MpTcpMetaSocket::Maximum] = {
   "Established",
   "Others",
   "Closing"
@@ -139,7 +139,7 @@ static const std::string containerNames[MpTcpSocketBase::Maximum] = {
 
 
 // TODO unused for now
-MpTcpSocketBase::MpTcpSocketBase(const TcpSocketBase& sock) :
+MpTcpMetaSocket::MpTcpMetaSocket(const TcpSocketBase& sock) :
   TcpSocketBase(sock),
 //  m_tracePrefix("default"),
 //  m_prefixCounter(1),
@@ -148,7 +148,7 @@ MpTcpSocketBase::MpTcpSocketBase(const TcpSocketBase& sock) :
   m_peerToken(0),
   m_doChecksum(false),
   m_receivedDSS(false)
-//    MpTcpSocketBase()   //! delegatin constructors only available in C++11
+//    MpTcpMetaSocket()   //! delegatin constructors only available in C++11
 {
     //
     NS_LOG_FUNCTION(this);
@@ -163,7 +163,7 @@ MpTcpSocketBase::MpTcpSocketBase(const TcpSocketBase& sock) :
 }
 
 
-MpTcpSocketBase::MpTcpSocketBase(const MpTcpSocketBase& sock) :
+MpTcpMetaSocket::MpTcpMetaSocket(const MpTcpMetaSocket& sock) :
   TcpSocketBase(sock),
 //  m_tracePrefix(sock.m_tracePrefix),
 //  m_prefixCounter(1), //!< Start at one
@@ -193,7 +193,7 @@ MpTcpSocketBase::MpTcpSocketBase(const MpTcpSocketBase& sock) :
 
 
 // TODO implement a copy constructor
-MpTcpSocketBase::MpTcpSocketBase() :
+MpTcpMetaSocket::MpTcpMetaSocket() :
   TcpSocketBase(),
 //  m_tracePrefix("default"),
 //  m_prefixCounter(1),
@@ -217,7 +217,7 @@ MpTcpSocketBase::MpTcpSocketBase() :
 }
 
 
-MpTcpSocketBase::~MpTcpSocketBase(void)
+MpTcpMetaSocket::~MpTcpMetaSocket(void)
 {
   NS_LOG_FUNCTION(this);
   m_node = 0;
@@ -241,7 +241,7 @@ MpTcpSocketBase::~MpTcpSocketBase(void)
 //    }
 //  m_tcp = 0;
 //  CancelAllSubflowTimers();
-//  NS_LOG_INFO(Simulator::Now().GetSeconds() << " ["<< this << "] ~MpTcpSocketBase ->" << m_tcp );
+//  NS_LOG_INFO(Simulator::Now().GetSeconds() << " ["<< this << "] ~MpTcpMetaSocket ->" << m_tcp );
 
   m_subflowConnectionSucceeded = MakeNullCallback<void, Ptr<MpTcpSubflow> >();
   m_subflowCreated = MakeNullCallback<void, Ptr<MpTcpSubflow> >();
@@ -250,7 +250,7 @@ MpTcpSocketBase::~MpTcpSocketBase(void)
 
 
 void
-MpTcpSocketBase::CreateScheduler(TypeId schedulerTypeId)
+MpTcpMetaSocket::CreateScheduler(TypeId schedulerTypeId)
 {
   NS_LOG_FUNCTION(this);
   NS_LOG_WARN("Overriding scheduler choice");
@@ -263,7 +263,7 @@ MpTcpSocketBase::CreateScheduler(TypeId schedulerTypeId)
 }
 
 int
-MpTcpSocketBase::ConnectNewSubflow(const Address &local, const Address &remote)
+MpTcpMetaSocket::ConnectNewSubflow(const Address &local, const Address &remote)
 {
   NS_ASSERT_MSG(InetSocketAddress::IsMatchingType(local) && InetSocketAddress::IsMatchingType(remote), "only support ipv4");
 
@@ -274,7 +274,7 @@ MpTcpSocketBase::ConnectNewSubflow(const Address &local, const Address &remote)
 
 
   // TODO remove next line (but will cause a bug, likely because m_subflowTypeId is
-  // not constructed properly since MpTcpSocketBase creation is hackish
+  // not constructed properly since MpTcpMetaSocket creation is hackish
   // and does not call CompleteConstruct
   m_subflowTypeId = MpTcpSubflow::GetTypeId();
   Ptr<Socket> socket = m_tcp->CreateSocket( m_congestionControl, m_subflowTypeId);
@@ -291,25 +291,25 @@ MpTcpSocketBase::ConnectNewSubflow(const Address &local, const Address &remote)
 }
 
 uint64_t
-MpTcpSocketBase::GetLocalKey() const
+MpTcpMetaSocket::GetLocalKey() const
 {
   return m_mptcpLocalKey;
 }
 
 uint32_t
-MpTcpSocketBase::GetLocalToken() const
+MpTcpMetaSocket::GetLocalToken() const
 {
   return m_mptcpLocalToken;
 }
 
 uint32_t
-MpTcpSocketBase::GetPeerToken() const
+MpTcpMetaSocket::GetPeerToken() const
 {
   return m_peerToken;
 }
 
 uint64_t
-MpTcpSocketBase::GetPeerKey() const
+MpTcpMetaSocket::GetPeerKey() const
 {
   return m_peerKey;
 }
@@ -318,7 +318,7 @@ MpTcpSocketBase::GetPeerKey() const
 //MpTcpAddressInfo info
 // Address info
 void
-MpTcpSocketBase::NotifyRemoteAddAddr(Address address)
+MpTcpMetaSocket::NotifyRemoteAddAddr(Address address)
 {
 
   if (!m_onRemoteAddAddr.IsNull())
@@ -330,22 +330,22 @@ MpTcpSocketBase::NotifyRemoteAddAddr(Address address)
 
 
 bool
-MpTcpSocketBase::DoChecksum() const
+MpTcpMetaSocket::DoChecksum() const
 {
   return false;
 }
 
 
 
-MpTcpSocketBase::SubflowList::size_type
-MpTcpSocketBase::GetNActiveSubflows() const
+MpTcpMetaSocket::SubflowList::size_type
+MpTcpMetaSocket::GetNActiveSubflows() const
 {
   return m_subflows[Established].size();
 }
 
   //std::vector<MpTcpSubflow>::size_ uint8
 Ptr<MpTcpSubflow>
-MpTcpSocketBase::GetSubflow(uint8_t id) const
+MpTcpMetaSocket::GetSubflow(uint8_t id) const
 {
   NS_ASSERT_MSG(id < m_subflows[Established].size(), "Trying to get an unexisting subflow");
   return m_subflows[Established][id];
@@ -356,14 +356,14 @@ MpTcpSocketBase::GetSubflow(uint8_t id) const
 // There could be some kind of artifical EstimateRtt based
 // on dataack returns
 //void
-//MpTcpSocketBase::EstimateRtt(const TcpHeader& TcpHeader)
+//MpTcpMetaSocket::EstimateRtt(const TcpHeader& TcpHeader)
 //{
 //  NS_LOG_FUNCTION(this);
 //}
 
 
 void
-MpTcpSocketBase::SetPeerKey(uint64_t remoteKey)
+MpTcpMetaSocket::SetPeerKey(uint64_t remoteKey)
 {
 //  NS_ASSERT( m_peerKey == 0);
 //  NS_ASSERT( m_state != CLOSED);
@@ -393,7 +393,7 @@ MpTcpSocketBase::SetPeerKey(uint64_t remoteKey)
 
 // TODO this should get reestablished and process the option depending on the state ?
 //int
-//MpTcpSocketBase::ProcessOptionMpTcp(const Ptr<const TcpOption> opt)
+//MpTcpMetaSocket::ProcessOptionMpTcp(const Ptr<const TcpOption> opt)
 //{
 //   NS_FATAL_ERROR("disabled .");
 //}
@@ -401,7 +401,7 @@ MpTcpSocketBase::SetPeerKey(uint64_t remoteKey)
 
 
 void
-MpTcpSocketBase::ProcessListen(Ptr<Packet> packet, const TcpHeader& mptcpHeader, const Address& fromAddress, const Address& toAddress)
+MpTcpMetaSocket::ProcessListen(Ptr<Packet> packet, const TcpHeader& mptcpHeader, const Address& fromAddress, const Address& toAddress)
 {
   // TODO removed
   NS_FATAL_ERROR("disabled");
@@ -413,7 +413,7 @@ TODO if without option create a NewReno
 TODO remove
 **/
 void
-MpTcpSocketBase::CompleteFork(
+MpTcpMetaSocket::CompleteFork(
   Ptr<const Packet> p,
   const TcpHeader& mptcpHeader,
   const Address& fromAddress,
@@ -427,7 +427,7 @@ MpTcpSocketBase::CompleteFork(
 
  // in fact it just calls SendPendingData()
 int
-MpTcpSocketBase::Send(Ptr<Packet> p, uint32_t flags)
+MpTcpMetaSocket::Send(Ptr<Packet> p, uint32_t flags)
 {
   NS_LOG_FUNCTION(this);
 
@@ -439,7 +439,7 @@ MpTcpSocketBase::Send(Ptr<Packet> p, uint32_t flags)
 // Receipt of new packet, put into Rx buffer
 // TODO should be called from subflows only
 void
-MpTcpSocketBase::ReceivedData(Ptr<Packet> p, const TcpHeader& mptcpHeader)
+MpTcpMetaSocket::ReceivedData(Ptr<Packet> p, const TcpHeader& mptcpHeader)
 {
   // Just override parent's
   // Does nothing
@@ -447,7 +447,7 @@ MpTcpSocketBase::ReceivedData(Ptr<Packet> p, const TcpHeader& mptcpHeader)
 }
   
 bool
-MpTcpSocketBase::UpdateWindowSize(uint32_t windowSize)
+MpTcpMetaSocket::UpdateWindowSize(uint32_t windowSize)
 {
   //!
   NS_LOG_FUNCTION(this);
@@ -461,7 +461,7 @@ A receiver MUST NOT shrink the right edge of the receive window (i.e.,
 DATA_ACK + receive window)
    */
 //void
-//MpTcpSocketBase::SetRemoteWindow(uint32_t win_size)
+//MpTcpMetaSocket::SetRemoteWindow(uint32_t win_size)
 //{
 //  //No checks are done here
 //  NS_LOG_FUNCTION(" Updating remote window. New m_rWnd=" << win_size );
@@ -482,7 +482,7 @@ DATA_ACK + receive window)
 //}
 
 //void
-//MpTcpSocketBase::DupAck( SequenceNumber32 dack,Ptr<MpTcpSubflow> sf, uint32_t count)
+//MpTcpMetaSocket::DupAck( SequenceNumber32 dack,Ptr<MpTcpSubflow> sf, uint32_t count)
 //{
 //  //!
 //  NS_LOG_ERROR("TODO Duplicate ACK " << dack);
@@ -500,7 +500,7 @@ DATA_ACK + receive window)
 
 
 void
-MpTcpSocketBase::ReceivedAck(Ptr<Packet> packet, const TcpHeader& mptcpHeader)
+MpTcpMetaSocket::ReceivedAck(Ptr<Packet> packet, const TcpHeader& mptcpHeader)
 {
   NS_FATAL_ERROR("Disabled");
 }
@@ -510,7 +510,7 @@ For now do nothing
 */
 
 uint32_t
-MpTcpSocketBase::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool withAck)
+MpTcpMetaSocket::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool withAck)
 {
 //  NS_LOG_FUNCTION (this << "Should do nothing" << maxSize << withAck);
 //  NS_FATAL_ERROR("Disabled");
@@ -524,7 +524,7 @@ MpTcpSocketBase::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool wit
 
 /** Cut cwnd and enter fast recovery mode upon triple dupack TODO ?*/
 //void
-//MpTcpSocketBase::DupAck(const TcpHeader& t, uint32_t count)
+//MpTcpMetaSocket::DupAck(const TcpHeader& t, uint32_t count)
 //{
 //  NS_ASSERT_MSG(false,"Should never be called. Use overloeaded dupack instead");
 //
@@ -558,7 +558,7 @@ MpTcpSocketBase::SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool wit
 
 /** Inherit from Socket class: Get the max number of bytes an app can read */
 uint32_t
-MpTcpSocketBase::GetRxAvailable(void) const
+MpTcpMetaSocket::GetRxAvailable(void) const
 {
   NS_LOG_FUNCTION (this);
   return m_rxBuffer->Available();
@@ -566,13 +566,13 @@ MpTcpSocketBase::GetRxAvailable(void) const
 
 
 //void
-//MpTcpSocketBase::OnSubflowReset( Ptr<MpTcpSubflow> sf)
+//MpTcpMetaSocket::OnSubflowReset( Ptr<MpTcpSubflow> sf)
 //{
 //
 //}
 
 void
-MpTcpSocketBase::OnSubflowClosed(Ptr<MpTcpSubflow> subflow, bool reset)
+MpTcpMetaSocket::OnSubflowClosed(Ptr<MpTcpSubflow> subflow, bool reset)
 {
   NS_LOG_LOGIC("Subflow " << subflow  << " definitely closed");
   //! TODO it should remove itself from the list of subflows and when 0 are active
@@ -589,7 +589,7 @@ MpTcpSocketBase::OnSubflowClosed(Ptr<MpTcpSubflow> subflow, bool reset)
 }
 
 void
-MpTcpSocketBase::DumpRxBuffers(Ptr<MpTcpSubflow> sf) const
+MpTcpMetaSocket::DumpRxBuffers(Ptr<MpTcpSubflow> sf) const
 {
   NS_LOG_INFO("=> Dumping meta RxBuffer ");
   m_rxBuffer->Dump();
@@ -615,7 +615,7 @@ We have to extract data from subflows on a per mapping basis because mappings
 may not necessarily be contiguous
 **/
 void
-MpTcpSocketBase::OnSubflowRecv(Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::OnSubflowRecv(Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_FUNCTION(this << "Received data from subflow=" << sf);
   NS_LOG_INFO("=> Dumping meta RxBuffer before extraction");
@@ -709,7 +709,7 @@ MpTcpSocketBase::OnSubflowRecv(Ptr<MpTcpSubflow> sf)
 TODO check that it autodisconnects when we destroy the object ?
 **/
 void
-MpTcpSocketBase::OnSubflowNewCwnd(std::string context, uint32_t oldCwnd, uint32_t newCwnd)
+MpTcpMetaSocket::OnSubflowNewCwnd(std::string context, uint32_t oldCwnd, uint32_t newCwnd)
 {
   NS_LOG_LOGIC("Subflow updated window from " << oldCwnd << " to " << newCwnd
 //        << " (context=" << context << ")"
@@ -726,7 +726,7 @@ TODO add a MakeBoundCallback that accepts a member function as first input
 static void
 onSubflowNewState(
 //  std::string context,
-  Ptr<MpTcpSocketBase> meta,
+  Ptr<MpTcpMetaSocket> meta,
   Ptr<MpTcpSubflow> sf,
   TcpSocket::TcpStates_t  oldState,
   TcpSocket::TcpStates_t newState
@@ -742,7 +742,7 @@ TODO use it to Notify user of
 We need a MakeBoundCallback
 */
 void
-MpTcpSocketBase::OnSubflowNewState(std::string context,
+MpTcpMetaSocket::OnSubflowNewState(std::string context,
   Ptr<MpTcpSubflow> sf,
   TcpSocket::TcpStates_t  oldState,
   TcpSocket::TcpStates_t newState
@@ -772,7 +772,7 @@ MpTcpSocketBase::OnSubflowNewState(std::string context,
     if(oldState == SYN_RCVD)
     {
       NS_LOG_LOGIC("Subflow created");
-//      Simulator::ScheduleNow(&MpTcpSocketBase::OnSubflowEstablished, this, sf);
+//      Simulator::ScheduleNow(&MpTcpMetaSocket::OnSubflowEstablished, this, sf);
       // TODO schedule it else it sends nothing ?
       OnSubflowEstablished(sf);
     }
@@ -780,7 +780,7 @@ MpTcpSocketBase::OnSubflowNewState(std::string context,
     else if(oldState == SYN_SENT)
     {
       // TODO schedule it else it sends nothing ?
-//      Simulator::ScheduleNow(&MpTcpSocketBase::OnSubflowEstablishment, this, sf);
+//      Simulator::ScheduleNow(&MpTcpMetaSocket::OnSubflowEstablishment, this, sf);
       OnSubflowEstablishment(sf);
     }
     else
@@ -803,7 +803,7 @@ TODO remove
 */
 
 Ptr<MpTcpSubflow>
-MpTcpSocketBase::CreateSubflow(
+MpTcpMetaSocket::CreateSubflow(
                                bool masterSocket
                                )
 {
@@ -847,7 +847,7 @@ MpTcpSocketBase::CreateSubflow(
 
   Ptr<MpTcpSubflow> sFlow = DynamicCast<MpTcpSubflow>(sock);
   // So that we know when the connection gets established
-  //sFlow->SetConnectCallback( MakeCallback (&MpTcpSocketBase::OnSubflowEstablishment, Ptr<MpTcpSocketBase>(this) ) );
+  //sFlow->SetConnectCallback( MakeCallback (&MpTcpMetaSocket::OnSubflowEstablishment, Ptr<MpTcpMetaSocket>(this) ) );
   sFlow->SetMeta(this);
 
   // TODO Maybe useless, master could be recognized based on endpoint  or mptcp state
@@ -866,7 +866,7 @@ MpTcpSocketBase::CreateSubflow(
 
 
 void
-MpTcpSocketBase::OnSubflowCreated (Ptr<Socket> socket, const Address &from)
+MpTcpMetaSocket::OnSubflowCreated (Ptr<Socket> socket, const Address &from)
 {
     NS_LOG_LOGIC(this);
     Ptr<MpTcpSubflow> sf = DynamicCast<MpTcpSubflow>(socket);
@@ -875,7 +875,7 @@ MpTcpSocketBase::OnSubflowCreated (Ptr<Socket> socket, const Address &from)
 }
 
 void
-MpTcpSocketBase::OnSubflowConnectionSuccess (Ptr<Socket> socket)
+MpTcpMetaSocket::OnSubflowConnectionSuccess (Ptr<Socket> socket)
 {
 
     NS_LOG_LOGIC(this);
@@ -884,7 +884,7 @@ MpTcpSocketBase::OnSubflowConnectionSuccess (Ptr<Socket> socket)
 }
 
 void
-MpTcpSocketBase::OnSubflowConnectionFailure (Ptr<Socket> socket)
+MpTcpMetaSocket::OnSubflowConnectionFailure (Ptr<Socket> socket)
 {
     NS_LOG_LOGIC(this);
     Ptr<MpTcpSubflow> sf = DynamicCast<MpTcpSubflow>(socket);
@@ -901,16 +901,16 @@ MpTcpSocketBase::OnSubflowConnectionFailure (Ptr<Socket> socket)
 
 
 void
-MpTcpSocketBase::AddSubflow(Ptr<MpTcpSubflow> sflow)
+MpTcpMetaSocket::AddSubflow(Ptr<MpTcpSubflow> sflow)
 {
   NS_LOG_FUNCTION(sflow);
   Ptr<MpTcpSubflow> sf = sflow;
   bool ok;
-  ok = sflow->TraceConnect ("CongestionWindow", "CongestionWindow", MakeCallback(&MpTcpSocketBase::OnSubflowNewCwnd, this));
+  ok = sflow->TraceConnect ("CongestionWindow", "CongestionWindow", MakeCallback(&MpTcpMetaSocket::OnSubflowNewCwnd, this));
   NS_ASSERT_MSG(ok, "Tracing mandatory to update the MPTCP global congestion window");
 
   //! We need to act on certain subflow state transitions according to doc "There is not a version with bound arguments."
-    //  NS_ASSERT(sFlow->TraceConnect ("State", "State", MakeCallback(&MpTcpSocketBase::OnSubflowNewState, this)) );
+    //  NS_ASSERT(sFlow->TraceConnect ("State", "State", MakeCallback(&MpTcpMetaSocket::OnSubflowNewState, this)) );
   ok = sflow->TraceConnectWithoutContext ("State", MakeBoundCallback(&onSubflowNewState, this, sflow));
   NS_ASSERT_MSG(ok, "Tracing mandatory to update the MPTCP socket state");
 
@@ -933,11 +933,11 @@ MpTcpSocketBase::AddSubflow(Ptr<MpTcpSubflow> sflow)
   don't communicate with the applications directly. The meta socket will
   */
 //  sf->SetSendCallback ( MakeCallback);
-  sflow->SetConnectCallback (MakeCallback (&MpTcpSocketBase::OnSubflowConnectionSuccess,this),
-                             MakeCallback (&MpTcpSocketBase::OnSubflowConnectionFailure,this));   // Ok
+  sflow->SetConnectCallback (MakeCallback (&MpTcpMetaSocket::OnSubflowConnectionSuccess,this),
+                             MakeCallback (&MpTcpMetaSocket::OnSubflowConnectionFailure,this));   // Ok
   sflow->SetAcceptCallback (MakeNullCallback<bool, Ptr<Socket>, const Address &>(),
-//                         MakeCallback (&MpTcpSocketBase::NotifyConnectionRequest,this)
-                            MakeCallback (&MpTcpSocketBase::OnSubflowCreated,this));
+//                         MakeCallback (&MpTcpMetaSocket::NotifyConnectionRequest,this)
+                            MakeCallback (&MpTcpMetaSocket::OnSubflowCreated,this));
   // Il y a aussi les!
 //  sf->SetCloseCallbacks
 //  sf->SetDataSentCallback (  );
@@ -955,14 +955,14 @@ which would have been hackish otherwise
 
 **/
 //void
-//MpTcpSocketBase::DoForwardUp(Ptr<Packet> packet, Ipv4Header header, uint16_t port, Ptr<Ipv4Interface> incomingInterface)
+//MpTcpMetaSocket::DoForwardUp(Ptr<Packet> packet, Ipv4Header header, uint16_t port, Ptr<Ipv4Interface> incomingInterface)
 //{
 //  NS_LOG_FUNCTION(this);
 //  TcpSocketBase::DoForwardUp(packet,header,port,incomingInterface);
 //
 //}
 void
-MpTcpSocketBase::ForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port, Ptr<Ipv4Interface> incomingInterface)
+MpTcpMetaSocket::ForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port, Ptr<Ipv4Interface> incomingInterface)
 {
     NS_LOG_DEBUG(this << " called with endpoint " << m_endPoint);
     NS_FATAL_ERROR("This socket should never receive any packet");
@@ -970,7 +970,7 @@ MpTcpSocketBase::ForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port
 }
 
 //uint32_t
-//MpTcpSocketBase::GetToken() const
+//MpTcpMetaSocket::GetToken() const
 //{
 ////  NS_ASSERT(m_state != SYN);
 //  return m_localToken;
@@ -978,7 +978,7 @@ MpTcpSocketBase::ForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port
 
 
 bool
-MpTcpSocketBase::NotifyJoinRequest (const Address &from, const Address & toAddress)
+MpTcpMetaSocket::NotifyJoinRequest (const Address &from, const Address & toAddress)
 {
   NS_LOG_FUNCTION (this << &from);
   if (!m_joinRequest.IsNull ())
@@ -997,7 +997,7 @@ MpTcpSocketBase::NotifyJoinRequest (const Address &from, const Address & toAddre
 
 
 bool
-MpTcpSocketBase::OwnIP(const Address& address) const
+MpTcpMetaSocket::OwnIP(const Address& address) const
 {
     NS_LOG_FUNCTION(this);
     NS_ASSERT_MSG(Ipv4Address::IsMatchingType(address), "only ipv4 supported for now");
@@ -1035,7 +1035,7 @@ Create in SYN/RCVD mode
 // TODO remove
 #if 0
 Ptr<MpTcpSubflow>
-MpTcpSocketBase::CreateSubflowAndCompleteFork(
+MpTcpMetaSocket::CreateSubflowAndCompleteFork(
   bool masterSocket,
 //  Ptr<Packet> p,
  const TcpHeader& mptcpHeader, const Address& fromAddress, const Address& toAddress
@@ -1056,7 +1056,7 @@ MpTcpSocketBase::CreateSubflowAndCompleteFork(
 #endif
 
 Ipv4EndPoint*
-MpTcpSocketBase::NewSubflowRequest(Ptr<Packet> p,
+MpTcpMetaSocket::NewSubflowRequest(Ptr<Packet> p,
                                    const TcpHeader & tcpHeader,
                                    const Address & fromAddress,
                                    const Address & toAddress,
@@ -1120,7 +1120,7 @@ and upon connection , the tcp subflow can't allocate
 TODO remove
 */
 int
-MpTcpSocketBase::Connect(const Address & toAddress)
+MpTcpMetaSocket::Connect(const Address & toAddress)
 {
   NS_LOG_FUNCTION(this);
 
@@ -1131,13 +1131,13 @@ MpTcpSocketBase::Connect(const Address & toAddress)
 
 /** This function closes the endpoint completely. Called upon RST_TX action. */
 void
-MpTcpSocketBase::SendRST(void)
+MpTcpMetaSocket::SendRST(void)
 {
   NS_FATAL_ERROR("TO REMOVE, use SendFastClose instead");
 }
 
 void
-MpTcpSocketBase::SendFastClose(Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::SendFastClose(Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_LOGIC ("Sending MP_FASTCLOSE");
 //  NS_FATAL_ERROR("TODO");
@@ -1159,7 +1159,7 @@ MpTcpSocketBase::SendFastClose(Ptr<MpTcpSubflow> sf)
 
 
 int
-MpTcpSocketBase::DoConnect(void)
+MpTcpMetaSocket::DoConnect(void)
 {
   NS_LOG_FUNCTION (this << "Disabled");
 //DeAllocate
@@ -1171,7 +1171,7 @@ MpTcpSocketBase::DoConnect(void)
 }
 
 void
-MpTcpSocketBase::ConnectionSucceeded(void)
+MpTcpMetaSocket::ConnectionSucceeded(void)
 {
   NS_LOG_FUNCTION(this);
    m_connected = true;
@@ -1180,7 +1180,7 @@ MpTcpSocketBase::ConnectionSucceeded(void)
 
 // TODO move to TcpSocketBase
 bool
-MpTcpSocketBase::IsConnected() const
+MpTcpMetaSocket::IsConnected() const
 {
   return m_connected;
 }
@@ -1188,7 +1188,7 @@ MpTcpSocketBase::IsConnected() const
 
 
 //int
-//MpTcpSocketBase::Connect(const Address &address)
+//MpTcpMetaSocket::Connect(const Address &address)
 //{
 //  NS_LOG_FUNCTION ( this << address );
 //  // this should call our own DoConnect
@@ -1200,7 +1200,7 @@ MpTcpSocketBase::IsConnected() const
 TODO convert to noop
 */
 int
-MpTcpSocketBase::Bind()
+MpTcpMetaSocket::Bind()
 {
   NS_LOG_FUNCTION (this);
   NS_FATAL_ERROR("TO remove");
@@ -1217,7 +1217,7 @@ MpTcpSocketBase::Bind()
 
 /** Clean up after Bind operation. Set up callback function in the end-point */
 int
-MpTcpSocketBase::SetupCallback()
+MpTcpMetaSocket::SetupCallback()
 {
   NS_LOG_FUNCTION(this);
   return TcpSocketBase::SetupCallback();
@@ -1227,7 +1227,7 @@ MpTcpSocketBase::SetupCallback()
 cconvert to noop
 */
 int
-MpTcpSocketBase::Bind(const Address &address)
+MpTcpMetaSocket::Bind(const Address &address)
 {
   NS_LOG_FUNCTION (this<<address);
   NS_FATAL_ERROR("TO remove");
@@ -1239,7 +1239,7 @@ MpTcpSocketBase::Bind(const Address &address)
 
 // CAREFUL, note that here it's SequenceNumber64
 //void
-//MpTcpSocketBase::NewAck(SequenceNumber64 const& dataLevelSeq)
+//MpTcpMetaSocket::NewAck(SequenceNumber64 const& dataLevelSeq)
 //{
 //  //!
 //
@@ -1253,7 +1253,7 @@ only permissible to combine these signals on one subflow if there is
 no data outstanding on other subflows.
 */
 void
-MpTcpSocketBase::PeerClose (SequenceNumber32 dsn, Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::PeerClose (SequenceNumber32 dsn, Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_LOGIC("Datafin with seq=" << dsn);
 
@@ -1327,7 +1327,7 @@ MpTcpSocketBase::PeerClose (SequenceNumber32 dsn, Ptr<MpTcpSubflow> sf)
 }
 
 void
-MpTcpSocketBase::OnInfiniteMapping(Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::OnInfiniteMapping(Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf)
 {
   NS_FATAL_ERROR("Infinite mapping not implemented");
 }
@@ -1339,7 +1339,7 @@ this function supposes that
 TODO is  never called apparently
 **/
 void
-MpTcpSocketBase::OnSubflowNewAck(Ptr<MpTcpSubflow> subflow)
+MpTcpMetaSocket::OnSubflowNewAck(Ptr<MpTcpSubflow> subflow)
 {
   NS_LOG_LOGIC("new subflow ack " );
 //  SyncTxBuffers(subflow);
@@ -1348,7 +1348,7 @@ MpTcpSocketBase::OnSubflowNewAck(Ptr<MpTcpSubflow> subflow)
 
 
 void
-MpTcpSocketBase::SyncTxBuffers()
+MpTcpMetaSocket::SyncTxBuffers()
 {
   NS_LOG_LOGIC("Syncing Tx buffer with all subflows");
   for(int i = 0; i < Maximum; ++i) {
@@ -1429,7 +1429,7 @@ MpTcpSocketBase::SyncTxBuffers()
 // TODO maybe add a bool to ask for
 //SequenceNumber32 const& ack,
 void
-MpTcpSocketBase::SyncTxBuffers(Ptr<MpTcpSubflow> subflow)
+MpTcpMetaSocket::SyncTxBuffers(Ptr<MpTcpSubflow> subflow)
 {
 
   NS_LOG_LOGIC("Syncing TxBuffer between meta " << this << " and subflow " << subflow);
@@ -1476,7 +1476,7 @@ TODO:
 **/
 
 void
-MpTcpSocketBase::UpdateTxBuffer()
+MpTcpMetaSocket::UpdateTxBuffer()
 {
     NS_LOG_LOGIC("Synchronizing buffers");
 
@@ -1488,7 +1488,7 @@ MpTcpSocketBase::UpdateTxBuffer()
 This should take care of ReTxTimeout
 */
 void
-MpTcpSocketBase::NewAck(SequenceNumber32 const& dsn,  bool resetRTO)
+MpTcpMetaSocket::NewAck(SequenceNumber32 const& dsn,  bool resetRTO)
 {
   NS_LOG_FUNCTION(this << " new dataack=[" <<  dsn << "]");
 
@@ -1524,7 +1524,7 @@ MpTcpSocketBase::NewAck(SequenceNumber32 const& dsn,  bool resetRTO)
       NS_LOG_LOGIC (this << " Schedule ReTxTimeout at time " <<
           Simulator::Now ().GetSeconds () << " to expire at time " <<
           (Simulator::Now () + m_rto.Get ()).GetSeconds ());
-      m_retxEvent = Simulator::Schedule(m_rto, &MpTcpSocketBase::ReTxTimeout, this);
+      m_retxEvent = Simulator::Schedule(m_rto, &MpTcpMetaSocket::ReTxTimeout, this);
     }
 
   // TODO update m_rWnd
@@ -1536,7 +1536,7 @@ MpTcpSocketBase::NewAck(SequenceNumber32 const& dsn,  bool resetRTO)
       NS_LOG_LOGIC ("Schedule persist timeout at time " <<
           Simulator::Now ().GetSeconds () << " to expire at time " <<
           (Simulator::Now () + m_persistTimeout).GetSeconds ());
-      m_persistEvent = Simulator::Schedule(m_persistTimeout, &MpTcpSocketBase::PersistTimeout, this);
+      m_persistEvent = Simulator::Schedule(m_persistTimeout, &MpTcpMetaSocket::PersistTimeout, this);
       NS_ASSERT(m_persistTimeout == Simulator::GetDelayLeft (m_persistEvent));
     }
 //    #endif
@@ -1567,7 +1567,7 @@ MpTcpSocketBase::NewAck(SequenceNumber32 const& dsn,  bool resetRTO)
 }
 
 bool
-MpTcpSocketBase::IsInfiniteMappingEnabled() const
+MpTcpMetaSocket::IsInfiniteMappingEnabled() const
 {
     return false;
 }
@@ -1576,7 +1576,7 @@ MpTcpSocketBase::IsInfiniteMappingEnabled() const
 // the local knowledge tells that the receiver has zero window size
 // C.f.: RFC793 p.42, RFC1112 sec.4.2.2.17
 void
-MpTcpSocketBase::PersistTimeout()
+MpTcpMetaSocket::PersistTimeout()
 {
   NS_LOG_LOGIC ("PersistTimeout expired at " << Simulator::Now ().GetSeconds ());
   NS_FATAL_ERROR("TODO");
@@ -1584,7 +1584,7 @@ MpTcpSocketBase::PersistTimeout()
 
 
 void
-MpTcpSocketBase::BecomeFullyEstablished()
+MpTcpMetaSocket::BecomeFullyEstablished()
 {
     NS_LOG_FUNCTION (this);
     m_receivedDSS = true;
@@ -1594,7 +1594,7 @@ MpTcpSocketBase::BecomeFullyEstablished()
 }
 
 bool
-MpTcpSocketBase::FullyEstablished() const
+MpTcpMetaSocket::FullyEstablished() const
 {
     NS_LOG_FUNCTION_NOARGS();
     return m_receivedDSS;
@@ -1607,7 +1607,7 @@ MpTcpSocketBase::FullyEstablished() const
  * we should not care about IsInfiniteMapping()
  */
 bool
-MpTcpSocketBase::SendPendingData(bool withAck)
+MpTcpMetaSocket::SendPendingData(bool withAck)
 {
   NS_LOG_FUNCTION(this << "Sending data" << TcpStateName[m_state]);
 
@@ -1829,7 +1829,7 @@ MpTcpSocketBase::SendPendingData(bool withAck)
 
 #if 0
 bool
-MpTcpSocketBase::SendPendingData(bool withAck)
+MpTcpMetaSocket::SendPendingData(bool withAck)
 {
   NS_LOG_FUNCTION(this << "Sending data" << TcpStateName[m_state]);
 
@@ -1938,7 +1938,7 @@ MpTcpSocketBase::SendPendingData(bool withAck)
 #endif
 
 int
-MpTcpSocketBase::Listen(void)
+MpTcpMetaSocket::Listen(void)
 {
   NS_LOG_FUNCTION (this);
   NS_FATAL_ERROR("Disabled");
@@ -1955,7 +1955,7 @@ MpTcpSocketBase::Listen(void)
  */
 //
 //void
-//MpTcpSocketBase::ReTxTimeout(uint8_t sFlowIdx)
+//MpTcpMetaSocket::ReTxTimeout(uint8_t sFlowIdx)
 //{ // Retransmit timeout
 //  NS_LOG_FUNCTION (this);
 ////  NS_ASSERT_MSG(client, "ReTxTimeout is not implemented for server side yet");
@@ -1985,7 +1985,7 @@ MpTcpSocketBase::Listen(void)
 //}
 
 void
-MpTcpSocketBase::OnSubflowDupAck(Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::OnSubflowDupAck(Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_DEBUG("Dup ack signaled by subflow " << sf );
 
@@ -1997,7 +1997,7 @@ MpTcpSocketBase::OnSubflowDupAck(Ptr<MpTcpSubflow> sf)
 // OnLoss
 #if 0
 void
-MpTcpSocketBase::ReduceCWND(uint8_t sFlowIdx)
+MpTcpMetaSocket::ReduceCWND(uint8_t sFlowIdx)
 {
 
   NS_ASSERT(m_algoCC);
@@ -2057,7 +2057,7 @@ adopt different strategies here, like reinjecting on other subflows etc...
 Maybe allow for a callback to be set here.
 */
 void
-MpTcpSocketBase::Retransmit()
+MpTcpMetaSocket::Retransmit()
 {
   NS_LOG_LOGIC(this);
 //  NS_FATAL_ERROR("TODO reestablish retransmit ?");
@@ -2072,7 +2072,7 @@ MpTcpSocketBase::Retransmit()
 
 
 void
-MpTcpSocketBase::DoRetransmit()
+MpTcpMetaSocket::DoRetransmit()
 {
   NS_LOG_FUNCTION (this);
 
@@ -2129,7 +2129,7 @@ MpTcpSocketBase::DoRetransmit()
 }
 
 void
-MpTcpSocketBase::SendFin()
+MpTcpMetaSocket::SendFin()
 {
     Ptr<MpTcpSubflow> subflow = GetSubflow(0);
 //          m_state = FIN_WAIT_1;
@@ -2140,7 +2140,7 @@ MpTcpSocketBase::SendFin()
 }
 
 void
-MpTcpSocketBase::ReTxTimeout()
+MpTcpMetaSocket::ReTxTimeout()
 {
   NS_LOG_FUNCTION(this);
   return TcpSocketBase::ReTxTimeout();
@@ -2151,7 +2151,7 @@ MpTcpSocketBase::ReTxTimeout()
 // TODO remove
 #if 0
 uint64_t
-MpTcpSocketBase::GenerateKey()
+MpTcpMetaSocket::GenerateKey()
 {
   // TODO rather use NS3 random generator
   NS_ASSERT_MSG( m_localKey == 0, "Key already generated");
@@ -2192,14 +2192,14 @@ MpTcpSocketBase::GenerateKey()
 
 
 //void
-//MpTcpSocketBase::GetIdManager()
+//MpTcpMetaSocket::GetIdManager()
 //{
 //  NS_ASSERT(m_remotePathIdManager);
 //  return m_remotePathIdManager;
 //}
 
 void
-MpTcpSocketBase::GetAllAdvertisedDestinations(std::vector<InetSocketAddress>& cont)
+MpTcpMetaSocket::GetAllAdvertisedDestinations(std::vector<InetSocketAddress>& cont)
 {
   NS_ASSERT(m_remotePathIdManager);
   m_remotePathIdManager->GetAllAdvertisedDestinations(cont);
@@ -2207,7 +2207,7 @@ MpTcpSocketBase::GetAllAdvertisedDestinations(std::vector<InetSocketAddress>& co
 
 
 void
-MpTcpSocketBase::SetNewAddrCallback(Callback<bool, Ptr<Socket>, Address, uint8_t> remoteAddAddrCb,
+MpTcpMetaSocket::SetNewAddrCallback(Callback<bool, Ptr<Socket>, Address, uint8_t> remoteAddAddrCb,
                           Callback<void, uint8_t> remoteRemAddrCb)
 
 {
@@ -2218,7 +2218,7 @@ MpTcpSocketBase::SetNewAddrCallback(Callback<bool, Ptr<Socket>, Address, uint8_t
 
 
 void
-MpTcpSocketBase::MoveSubflow(Ptr<MpTcpSubflow> subflow, mptcp_container_t from, mptcp_container_t to)
+MpTcpMetaSocket::MoveSubflow(Ptr<MpTcpSubflow> subflow, mptcp_container_t from, mptcp_container_t to)
 {
 
   NS_LOG_DEBUG("Moving subflow " << subflow << " from " << containerNames[from] << " to " << containerNames[to]);
@@ -2238,7 +2238,7 @@ MpTcpSocketBase::MoveSubflow(Ptr<MpTcpSubflow> subflow, mptcp_container_t from, 
 
 
 void
-MpTcpSocketBase::DumpSubflows() const
+MpTcpMetaSocket::DumpSubflows() const
 {
   NS_LOG_FUNCTION(this << "\n");
   for(int i = 0; i < Maximum; ++i)
@@ -2259,7 +2259,7 @@ MpTcpSocketBase::DumpSubflows() const
 We shouldn't need the from container, it could be found
 */
 void
-MpTcpSocketBase::MoveSubflow(Ptr<MpTcpSubflow> subflow, mptcp_container_t to)
+MpTcpMetaSocket::MoveSubflow(Ptr<MpTcpSubflow> subflow, mptcp_container_t to)
 {
   NS_LOG_DEBUG("Moving subflow " << subflow << " to " << containerNames[to]);
 
@@ -2290,7 +2290,7 @@ MpTcpSocketBase::MoveSubflow(Ptr<MpTcpSubflow> subflow, mptcp_container_t to)
 TODO rename into subflow created
 */
 void
-MpTcpSocketBase::OnSubflowEstablished(Ptr<MpTcpSubflow> subflow)
+MpTcpMetaSocket::OnSubflowEstablished(Ptr<MpTcpSubflow> subflow)
 {
 
 
@@ -2319,13 +2319,13 @@ MpTcpSocketBase::OnSubflowEstablished(Ptr<MpTcpSubflow> subflow)
 //  else
 //  {
   ComputeTotalCWND();
-//  Simulator::ScheduleNow(&MpTcpSocketBase::NotifySubflowCreated, this, subflow );
+//  Simulator::ScheduleNow(&MpTcpMetaSocket::NotifySubflowCreated, this, subflow );
 //  }
 }
 
 // TODO this could be done when tracking the subflow m_state
 void
-MpTcpSocketBase::OnSubflowEstablishment(Ptr<MpTcpSubflow> subflow)
+MpTcpMetaSocket::OnSubflowEstablishment(Ptr<MpTcpSubflow> subflow)
 {
   NS_LOG_LOGIC(this << " (=meta) New subflow " << subflow << " established");
   //Ptr<MpTcpSubflow> subflow = DynamicCast<MpTcpSubflow>(sock);
@@ -2347,15 +2347,15 @@ MpTcpSocketBase::OnSubflowEstablishment(Ptr<MpTcpSubflow> subflow)
       NS_LOG_WARN("Unhandled case where subflow got established while meta in " << TcpStateName[m_state] );
     }
 
-    Simulator::ScheduleNow(&MpTcpSocketBase::ConnectionSucceeded, this);
+    Simulator::ScheduleNow(&MpTcpMetaSocket::ConnectionSucceeded, this);
   }
 
-//  Simulator::ScheduleNow(&MpTcpSocketBase::NotifySubflowConnected, this, subflow);
+//  Simulator::ScheduleNow(&MpTcpMetaSocket::NotifySubflowConnected, this, subflow);
 }
 
 
 void
-MpTcpSocketBase::NotifySubflowCreated(Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::NotifySubflowCreated(Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_FUNCTION(this << sf);
   if (!m_subflowCreated.IsNull ())
@@ -2365,7 +2365,7 @@ MpTcpSocketBase::NotifySubflowCreated(Ptr<MpTcpSubflow> sf)
 }
 
 void
-MpTcpSocketBase::NotifySubflowConnected(Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::NotifySubflowConnected(Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_FUNCTION(this << sf);
   if (!m_subflowConnectionSucceeded.IsNull ())
@@ -2378,9 +2378,9 @@ MpTcpSocketBase::NotifySubflowConnected(Ptr<MpTcpSubflow> sf)
 
 //
 void
-MpTcpSocketBase::SetSubflowAcceptCallback(
+MpTcpMetaSocket::SetSubflowAcceptCallback(
 //  Callback<void, Ptr<MpTcpSubflow> > connectionRequest,
-  Callback<bool, Ptr<MpTcpSocketBase>, const Address &, const Address & > joinRequest,
+  Callback<bool, Ptr<MpTcpMetaSocket>, const Address &, const Address & > joinRequest,
   Callback<void, Ptr<MpTcpSubflow> > connectionCreated
 )
 {
@@ -2392,7 +2392,7 @@ MpTcpSocketBase::SetSubflowAcceptCallback(
 }
 
 void
-MpTcpSocketBase::SetSubflowConnectCallback(
+MpTcpMetaSocket::SetSubflowConnectCallback(
   Callback<void, Ptr<MpTcpSubflow> > connectionSucceeded,
   Callback<void, Ptr<MpTcpSubflow> > connectionFailure
   )
@@ -2403,7 +2403,7 @@ MpTcpSocketBase::SetSubflowConnectCallback(
 }
 
 //void
-//MpTcpSocketBase::SetJoinCreatedCallback(
+//MpTcpMetaSocket::SetJoinCreatedCallback(
 //  Callback<void, Ptr<MpTcpSubflow> > connectionCreated)
 //{
 //  NS_LOG_FUNCTION(this << &connectionCreated);
@@ -2413,15 +2413,15 @@ MpTcpSocketBase::SetSubflowConnectCallback(
 
 
 TypeId
-MpTcpSocketBase::GetInstanceTypeId(void) const
+MpTcpMetaSocket::GetInstanceTypeId(void) const
 {
-  return MpTcpSocketBase::GetTypeId();
+  return MpTcpMetaSocket::GetTypeId();
 }
 
 
 
 void
-MpTcpSocketBase::OnSubflowClosing(Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::OnSubflowClosing(Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_LOGIC("Subflow has gone into state ["
 //               << TcpStateName[sf->m_state]
@@ -2448,13 +2448,13 @@ MpTcpSocketBase::OnSubflowClosing(Ptr<MpTcpSubflow> sf)
 
 
 void
-MpTcpSocketBase::OnSubflowDupack(Ptr<MpTcpSubflow> sf, MpTcpMapping mapping)
+MpTcpMetaSocket::OnSubflowDupack(Ptr<MpTcpSubflow> sf, MpTcpMapping mapping)
 {
   NS_LOG_LOGIC("Subflow Dupack TODO.Nothing done by meta");
 }
 
 void
-MpTcpSocketBase::OnSubflowRetransmit(Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::OnSubflowRetransmit(Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_INFO("Subflow retransmit. Nothing done by meta");
 }
@@ -2463,7 +2463,7 @@ MpTcpSocketBase::OnSubflowRetransmit(Ptr<MpTcpSubflow> sf)
 // renvoie m_highTxMark.Get() - m_txBuffer->HeadSequence(); should be ok even
 // if bytes may not really be in flight but rather in subflows buffer
 uint32_t
-MpTcpSocketBase::BytesInFlight()
+MpTcpMetaSocket::BytesInFlight()
 {
   NS_LOG_FUNCTION(this);
   return TcpSocketBase::BytesInFlight();
@@ -2483,7 +2483,7 @@ MpTcpSocketBase::BytesInFlight()
 //TcpSocketBase::UnAckDataCount()
 // TODO buggy ?
 uint16_t
-MpTcpSocketBase::AdvertisedWindowSize()
+MpTcpMetaSocket::AdvertisedWindowSize()
 {
   NS_LOG_FUNCTION(this);
   return TcpSocketBase::AdvertisedWindowSize();
@@ -2492,7 +2492,7 @@ MpTcpSocketBase::AdvertisedWindowSize()
 }
 
 uint32_t
-MpTcpSocketBase::Window()
+MpTcpMetaSocket::Window()
 {
   NS_LOG_FUNCTION (this);
   return TcpSocketBase::Window();
@@ -2500,7 +2500,7 @@ MpTcpSocketBase::Window()
 
 
 uint32_t
-MpTcpSocketBase::AvailableWindow()
+MpTcpMetaSocket::AvailableWindow()
 {
   NS_LOG_FUNCTION (this);
   uint32_t unack = UnAckDataCount(); // Number of outstanding bytes
@@ -2514,7 +2514,7 @@ MpTcpSocketBase::AvailableWindow()
 This does not change much for now
 **/
 //Time
-//MpTcpSocketBase::ComputeReTxTimeoutForSubflow( Ptr<MpTcpSubflow> sf)
+//MpTcpMetaSocket::ComputeReTxTimeoutForSubflow( Ptr<MpTcpSubflow> sf)
 //{
 //  NS_ASSERT(sf);
 //    //ReTxTimeout
@@ -2527,7 +2527,7 @@ This does not change much for now
 
 
 void
-MpTcpSocketBase::ClosingOnEmpty(TcpHeader& header)
+MpTcpMetaSocket::ClosingOnEmpty(TcpHeader& header)
 {
   /* TODO the question is: is that ever called ?
   */
@@ -2564,7 +2564,7 @@ MpTcpSocketBase::ClosingOnEmpty(TcpHeader& header)
 
 /** Inherit from Socket class: Kill this socket and signal the peer (if any) */
 int
-MpTcpSocketBase::Close(void)
+MpTcpMetaSocket::Close(void)
 {
   NS_LOG_FUNCTION (this);
   return TcpSocketBase::Close();
@@ -2604,7 +2604,7 @@ MpTcpSocketBase::Close(void)
 }
 
 void
-MpTcpSocketBase::CloseAllSubflows()
+MpTcpMetaSocket::CloseAllSubflows()
 {
   NS_LOG_FUNCTION(this << "Closing all subflows");
   NS_ASSERT( m_state == FIN_WAIT_2 || m_state == CLOSING || m_state == CLOSE_WAIT || m_state == LAST_ACK);
@@ -2636,7 +2636,7 @@ MpTcpSocketBase::CloseAllSubflows()
 
 
 void
-MpTcpSocketBase::ReceivedAck(
+MpTcpMetaSocket::ReceivedAck(
   SequenceNumber32 dack
   , Ptr<MpTcpSubflow> sf
   , bool count_dupacks
@@ -2685,7 +2685,7 @@ MpTcpSocketBase::ReceivedAck(
 
 /** Received a packet upon CLOSE_WAIT, FIN_WAIT_1, or FIN_WAIT_2 states */
 //void
-//MpTcpSocketBase::ProcessWait(Ptr<Packet> packet, const TcpHeader& tcpHeader)
+//MpTcpMetaSocket::ProcessWait(Ptr<Packet> packet, const TcpHeader& tcpHeader)
 //{
 //  NS_LOG_FUNCTION (this << tcpHeader);
 //
@@ -2696,7 +2696,7 @@ MpTcpSocketBase::ReceivedAck(
 
 /** Peacefully close the socket by notifying the upper layer and deallocate end point */
 //void
-//MpTcpSocketBase::CloseAndNotify(void)
+//MpTcpMetaSocket::CloseAndNotify(void)
 //{
 //  NS_LOG_FUNCTION (this);
 //
@@ -2717,7 +2717,7 @@ MpTcpSocketBase::ReceivedAck(
 
 /** Move TCP to Time_Wait state and schedule a transition to Closed state */
 void
-MpTcpSocketBase::TimeWait()
+MpTcpMetaSocket::TimeWait()
 {
   Time timewait_duration = Seconds(2 * m_msl);
   NS_LOG_INFO (TcpStateName[m_state] << " -> TIME_WAIT "
@@ -2729,11 +2729,11 @@ MpTcpSocketBase::TimeWait()
   CancelAllTimers();
 //  // Move from TIME_WAIT to CLOSED after 2*MSL. Max segment lifetime is 2 min
 //  // according to RFC793, p.28
-  m_timewaitEvent = Simulator::Schedule(timewait_duration, &MpTcpSocketBase::OnTimeWaitTimeOut, this);
+  m_timewaitEvent = Simulator::Schedule(timewait_duration, &MpTcpMetaSocket::OnTimeWaitTimeOut, this);
 }
 
 void
-MpTcpSocketBase::OnTimeWaitTimeOut(void)
+MpTcpMetaSocket::OnTimeWaitTimeOut(void)
 {
   // Would normally call CloseAndNotify
   NS_LOG_LOGIC("Timewait timeout expired");
@@ -2744,7 +2744,7 @@ MpTcpSocketBase::OnTimeWaitTimeOut(void)
 
 /** Peacefully close the socket by notifying the upper layer and deallocate end point */
 void
-MpTcpSocketBase::CloseAndNotify(void)
+MpTcpMetaSocket::CloseAndNotify(void)
 {
   NS_LOG_FUNCTION (this);
 
@@ -2769,7 +2769,7 @@ It means there won't be any mapping above that dataseq
 */
 
 void
-MpTcpSocketBase::PeerClose(Ptr<Packet> p, const TcpHeader& tcpHeader)
+MpTcpMetaSocket::PeerClose(Ptr<Packet> p, const TcpHeader& tcpHeader)
 {
   NS_LOG_FUNCTION(this << " PEEER CLOSE CALLED !" << tcpHeader);
 
@@ -2847,7 +2847,7 @@ MpTcpSocketBase::PeerClose(Ptr<Packet> p, const TcpHeader& tcpHeader)
 /** Received a in-sequence FIN. Close down this socket. */
 // FIN is in sequence, notify app and respond with a FIN
 void
-MpTcpSocketBase::DoPeerClose(void)
+MpTcpMetaSocket::DoPeerClose(void)
 {
   NS_FATAL_ERROR("To remove");
 //  NS_ASSERT(m_state == ESTABLISHED || m_state == SYN_RCVD);
@@ -2895,7 +2895,7 @@ MpTcpSocketBase::DoPeerClose(void)
 
 // TODO this could be reimplemented via choosing
 void
-MpTcpSocketBase::SendEmptyPacket(TcpHeader& header)
+MpTcpMetaSocket::SendEmptyPacket(TcpHeader& header)
 {
   NS_FATAL_ERROR("Disabled. Should call subflow member");
 }
@@ -2907,7 +2907,7 @@ MpTcpSocketBase::SendEmptyPacket(TcpHeader& header)
  TODO use a closeAndNotify in more situations
  */
 int
-MpTcpSocketBase::DoClose()
+MpTcpMetaSocket::DoClose()
 {
   NS_LOG_FUNCTION(this << " in state " << TcpStateName[m_state]);
 
@@ -2994,7 +2994,7 @@ MpTcpSocketBase::DoClose()
 
 
 Ptr<Packet>
-MpTcpSocketBase::Recv(uint32_t maxSize, uint32_t flags)
+MpTcpMetaSocket::Recv(uint32_t maxSize, uint32_t flags)
 {
   NS_LOG_FUNCTION(this);
   return TcpSocketBase::Recv(maxSize,flags);
@@ -3004,7 +3004,7 @@ MpTcpSocketBase::Recv(uint32_t maxSize, uint32_t flags)
 
 
 uint32_t
-MpTcpSocketBase::GetTxAvailable(void) const
+MpTcpMetaSocket::GetTxAvailable(void) const
 {
   NS_LOG_FUNCTION (this);
   uint32_t value = m_txBuffer->Available();
@@ -3029,7 +3029,7 @@ This function should be overridable since it may depend on the CC, cf RFC:
 TODO fix this to handle fast recovery
 **/
 uint32_t
-MpTcpSocketBase::ComputeTotalCWND()
+MpTcpMetaSocket::ComputeTotalCWND()
 {
   NS_LOG_DEBUG("Cwnd before update=" << Window()
 //               m_tcb->m_cWnd.Get()
@@ -3071,7 +3071,7 @@ MpTcpSocketBase::ComputeTotalCWND()
 /** Kill this socket. This is a callback function configured to m_endpoint in
  SetupCallback(), invoked when the endpoint is destroyed. */
 void
-MpTcpSocketBase::Destroy(void)
+MpTcpMetaSocket::Destroy(void)
 {
   NS_LOG_FUNCTION(this);
   NS_LOG_INFO("Enter Destroy(" << this << ") m_sockets: )");

@@ -61,11 +61,11 @@ public:
   **/
 //  virtual Ptr<TcpSocketBase> Fork(void);
   // transform into a callback ?
-  // Callback<Ptr<MpTcpSubflow>, Ptr<MpTcpSocketBase>, Ptr<MpTcpCongestionControl> >
+  // Callback<Ptr<MpTcpSubflow>, Ptr<MpTcpMetaSocket>, Ptr<MpTcpCongestionControl> >
   //Ptr<MpTcpSubflow>
 
   // Called by SendPendingData() to get a subflow based on round robin algorithm
-//  virtual int GeneratePartition(Ptr<MpTcpSocketBase> metaSock);
+//  virtual int GeneratePartition(Ptr<MpTcpMetaSocket> metaSock);
 
   virtual std::string
   GetName(void) const;

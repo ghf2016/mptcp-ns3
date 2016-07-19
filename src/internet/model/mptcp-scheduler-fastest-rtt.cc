@@ -21,7 +21,7 @@
  */
 #include "ns3/mptcp-scheduler-fastest-rtt.h"
 #include "ns3/mptcp-subflow.h"
-#include "ns3/mptcp-socket-base.h"
+#include "ns3/mptcp-meta-socket.h"
 #include "ns3/log.h"
 
 NS_LOG_COMPONENT_DEFINE("MpTcpSchedulerFastestRTT");
@@ -54,7 +54,7 @@ MpTcpSchedulerFastestRTT::~MpTcpSchedulerFastestRTT (void)
 
 
 void
-MpTcpSchedulerFastestRTT::SetMeta(Ptr<MpTcpSocketBase> metaSock)
+MpTcpSchedulerFastestRTT::SetMeta(Ptr<MpTcpMetaSocket> metaSock)
 {
   NS_ASSERT(metaSock);
   NS_ASSERT_MSG(m_metaSock == 0, "SetMeta already called");

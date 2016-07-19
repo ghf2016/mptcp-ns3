@@ -31,7 +31,7 @@
 namespace ns3
 {
 
-class MpTcpSocketBase;
+class MpTcpMetaSocket;
 
 /**
  * This class is responsible for
@@ -73,18 +73,18 @@ public:
    * \param activeSubflowArrayId
    * \param uint16_t
    * \return true if could generate a mapping
-   * \see MpTcpSocketBase::SendPendingData
+   * \see MpTcpMetaSocket::SendPendingData
    */
   virtual bool GenerateMapping(
         int& activeSubflowArrayId, SequenceNumber64& dsn, uint16_t& length
                               ) = 0;
 
-  virtual void SetMeta(Ptr<MpTcpSocketBase> metaSock) = 0;
+  virtual void SetMeta(Ptr<MpTcpMetaSocket> metaSock) = 0;
   /**
   \brief
   \return Subflow on which to send
   **/
-//  virtual Ptr<MpTcpSubflow> GetSubflowToUse(Ptr<MpTcpSocketBase> metaSock);
+//  virtual Ptr<MpTcpSubflow> GetSubflowToUse(Ptr<MpTcpMetaSocket> metaSock);
 
 };
 

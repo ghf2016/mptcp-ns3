@@ -18,7 +18,7 @@ TypeId
 MpTcpLia::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::MpTcpLia")
-    .SetParent<MpTcpSocketBase> ()
+    .SetParent<MpTcpMetaSocket> ()
     .AddConstructor<MpTcpLia> ()
 //    .AddAttribute ("ReTxThreshold", "Threshold for fast retransmit",
 //                    UintegerValue (3),
@@ -44,13 +44,13 @@ MpTcpLia::GetTypeId (void)
 
 
 MpTcpLia::MpTcpLia(void) :
-  MpTcpSocketBase()
+  MpTcpMetaSocket()
 {
   NS_LOG_FUNCTION (this);
 }
 
 MpTcpLia::MpTcpLia(const MpTcpLia& sock) :
-  MpTcpSocketBase(sock)
+  MpTcpMetaSocket(sock)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_LOGIC ("Invoked the copy constructor");
@@ -68,7 +68,7 @@ MpTcpLia::~MpTcpLia()
 //  return GetTypeId();
 //}
 
-Ptr<MpTcpSocketBase>
+Ptr<MpTcpMetaSocket>
 MpTcpLia::ForkAsMeta(void)
 {
   NS_LOG_UNCOND ("Fork as meta" << this->GetInstanceTypeId() << " to " << GetTypeId());
@@ -106,7 +106,7 @@ MpTcpLia::GetInitialCwnd(void) const
 
 //
 //Ptr<SubFlow>
-//MpTcpLia::GetSubflowToUse(Ptr<MpTcpSocketBase> metaSock)
+//MpTcpLia::GetSubflowToUse(Ptr<MpTcpMetaSocket> metaSock)
 //{
 //  uint8_t nextSubFlow = 0;
 //  switch (m_distribAlgo)

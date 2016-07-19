@@ -3,7 +3,7 @@
 
 //#include"ns3/mp-tcp-cc.h"
 //#include"ns3/mp-tcp-subflow.h"
-#include"ns3/mptcp-socket-base.h"
+#include"ns3/mptcp-meta-socket.h"
 //#include"ns3/callback.h"
 
 namespace ns3
@@ -23,7 +23,7 @@ static struct tcp_congestion_ops mptcp_olia = {
 
 * \ingroup mptcp
 */
-class MpTcpLia : public MpTcpSocketBase
+class MpTcpLia : public MpTcpMetaSocket
 {
 
 public:
@@ -40,14 +40,14 @@ public:
   GetInitialCwnd(void) const;
 
 
-  virtual Ptr<MpTcpSocketBase> ForkAsMeta(void);
+  virtual Ptr<MpTcpMetaSocket> ForkAsMeta(void);
 //  virtual Ptr<TcpSocketBase> Fork(void);
   // transform into a callback ?
-  // Callback<Ptr<MpTcpSubflow>, Ptr<MpTcpSocketBase>, Ptr<MpTcpCongestionControl> >
+  // Callback<Ptr<MpTcpSubflow>, Ptr<MpTcpMetaSocket>, Ptr<MpTcpCongestionControl> >
   //Ptr<MpTcpSubflow>
 
   // Called by SendPendingData() to get a subflow based on round robin algorithm
-//  virtual int GeneratePartition(Ptr<MpTcpSocketBase> metaSock);
+//  virtual int GeneratePartition(Ptr<MpTcpMetaSocket> metaSock);
 
 //  virtual const char*
 //  GetName(void) const {

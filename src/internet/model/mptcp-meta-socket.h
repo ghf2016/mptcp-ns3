@@ -64,7 +64,7 @@ TODO move all the supplementary stuff to MpTcpSocketState
 //};
 
 /**
- * \class MpTcpSocketBase
+ * \class MpTcpMetaSocket
 
 This is the MPTCP meta socket the application talks with
 this socket. New subflows, as well as the first one (the master
@@ -93,7 +93,7 @@ even if that subflow got closed during the MpTcpConnection.
 
 ConnectionSucceeded may be called twice; once when it goes to established
 and the second time when it sees
- Simulator::ScheduleNow(&MpTcpSocketBase::ConnectionSucceeded, this);
+ Simulator::ScheduleNow(&MpTcpMetaSocket::ConnectionSucceeded, this);
 
 TODO:
 -rename in MetaSocket ?
@@ -101,7 +101,7 @@ TODO:
 -should use 64 bits based buffer / sq nb
 
 **/
-class MpTcpSocketBase : public TcpSocketBase
+class MpTcpMetaSocket : public TcpSocketBase
 // public TcpSocket
 
 {
@@ -115,11 +115,11 @@ public:
 
   virtual TypeId GetInstanceTypeId (void) const;
 
-  MpTcpSocketBase();
-  MpTcpSocketBase(const MpTcpSocketBase&);
-  MpTcpSocketBase(const TcpSocketBase&);
+  MpTcpMetaSocket();
+  MpTcpMetaSocket(const MpTcpMetaSocket&);
+  MpTcpMetaSocket(const TcpSocketBase&);
 
-  virtual ~MpTcpSocketBase();
+  virtual ~MpTcpMetaSocket();
 
   /**
    * Should be called only by subflows when they update their receiver window
@@ -147,7 +147,7 @@ public:
    * \see Socket::Set
    */
   virtual void
-  SetSubflowAcceptCallback(Callback<bool, Ptr<MpTcpSocketBase>, const Address &, const Address & > connectionRequest,
+  SetSubflowAcceptCallback(Callback<bool, Ptr<MpTcpMetaSocket>, const Address &, const Address & > connectionRequest,
                            Callback<void, Ptr<MpTcpSubflow> > connectionCreated
                            );
 
@@ -291,7 +291,7 @@ public:
   virtual int Listen(void);
 
   /**
-   * \brief Same as MpTcpSocketBase::Close
+   * \brief Same as MpTcpMetaSocket::Close
    *
    * The default behavior is to do nothing until all the data is transmitted.
    * Only then are
@@ -799,7 +799,7 @@ private:
   Callback<void, Ptr<MpTcpSubflow> > m_subflowConnectionFailure;     //!< connection failed callback
 //  Callback<void, Ptr<Socket> >                   m_normalClose;          //!< connection closed callback
 //  Callback<void, Ptr<Socket> >                   m_errorClose;           //!< connection closed due to errors callback
-  Callback<bool, Ptr<MpTcpSocketBase>, const Address &, const Address & >       m_joinRequest;    //!< connection request callback
+  Callback<bool, Ptr<MpTcpMetaSocket>, const Address &, const Address & >       m_joinRequest;    //!< connection request callback
   Callback<void, Ptr<MpTcpSubflow> >    m_subflowCreated; //!< connection created callback
 
 // , const Address &, bool master

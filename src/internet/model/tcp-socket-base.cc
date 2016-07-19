@@ -53,7 +53,7 @@
 #include "tcp-congestion-ops.h"
 #include "mptcp-crypto.h"
 #include "mptcp-subflow.h"
-#include "mptcp-socket-base.h"
+#include "mptcp-meta-socket.h"
 #include "tcp-option-mptcp.h"
 
 #include <math.h>
@@ -1905,7 +1905,7 @@ TcpSocketBase::UpgradeToMeta (uint64_t localKey, uint64_t peerKey)
   
   Ptr<TcpSocketWrapper> wrapper = GetSocketWrapper();
   
-  Ptr<MpTcpSocketBase> meta = CopyObject<MpTcpSocketBase, TcpSocketBase>(this);
+  Ptr<MpTcpMetaSocket> meta = CopyObject<MpTcpMetaSocket, TcpSocketBase>(this);
   wrapper->SetSocket(meta);
   
   Ptr<MpTcpSubflow> master = CopyObject<MpTcpSubflow, TcpSocketBase>(this);

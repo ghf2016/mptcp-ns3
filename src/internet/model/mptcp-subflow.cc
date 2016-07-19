@@ -31,7 +31,7 @@
 #include "ns3/log.h"
 #include "ns3/abort.h"
 #include "ns3/mptcp-subflow.h"
-#include "ns3/mptcp-socket-base.h"
+#include "ns3/mptcp-meta-socket.h"
 #include "ns3/tcp-l4-protocol.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/ipv4-end-point.h"
@@ -109,7 +109,7 @@ MpTcpSubflow::GetInstanceTypeId(void) const
 
 
 void
-MpTcpSubflow::SetMeta(Ptr<MpTcpSocketBase> metaSocket)
+MpTcpSubflow::SetMeta(Ptr<MpTcpMetaSocket> metaSocket)
 {
   NS_ASSERT(metaSocket);
   NS_LOG_FUNCTION(this);
@@ -289,7 +289,7 @@ MpTcpSubflow::MpTcpSubflow(const MpTcpSubflow& sock)
 }
 
 MpTcpSubflow::MpTcpSubflow(
-//Ptr<MpTcpSocketBase> metaSocket
+//Ptr<MpTcpMetaSocket> metaSocket
 ) :
     TcpSocketBase(),
     m_routeId(0),
@@ -791,7 +791,7 @@ MpTcpSubflow::ProcessListen(Ptr<Packet> packet, const TcpHeader& tcpHeader, cons
       );
 }
 
-Ptr<MpTcpSocketBase>
+Ptr<MpTcpMetaSocket>
 MpTcpSubflow::GetMeta() const
 {
   NS_ASSERT(m_metaSocket);
@@ -1307,7 +1307,7 @@ MpTcpSubflow::AddOptionMpTcp3WHS(TcpHeader& hdr) const
 //          uint64_t idsn = 0;
 //          int result = 0;
 //          result =
-//          MpTcpSocketBase::GenerateTokenForKey( MPTCP_SHA1, GetMeta()->GetRemoteKey(), token, idsn );
+//          MpTcpMetaSocket::GenerateTokenForKey( MPTCP_SHA1, GetMeta()->GetRemoteKey(), token, idsn );
 
           join->SetPeerToken(GetMeta()->GetPeerToken());
           join->SetNonce(0);
@@ -1546,7 +1546,7 @@ bool MpTcpSubflow::CanSendPendingData ()
   
   //Note, for subflows, we need to check against the meta socket's txbuffer, not our own
   //(which is used for dealing with congestion control rather than flow control).
-  Ptr<MpTcpSocketBase> metaSocket = GetMeta();
+  Ptr<MpTcpMetaSocket> metaSocket = GetMeta();
   
   uint32_t w = AvailableWindow (); // Get available window size
   // Stop sending if we need to wait for a larger Tx window (prevent silly window syndrome)
@@ -2464,7 +2464,7 @@ MpTcpSubflow::ProcessTcpOptionMpTcpDSS(Ptr<const TcpOptionMpTcpDSS> dss)
 #if 0
 /* process while in CLOSING/LAST_ACK */
 void
-MpTcpSocketBase::ProcessOptionMpTcpClosing( Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::ProcessOptionMpTcpClosing( Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf)
 {
 
   /////////////////////////////////////////////

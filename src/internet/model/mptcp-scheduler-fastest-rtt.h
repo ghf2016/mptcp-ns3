@@ -33,7 +33,7 @@
 namespace ns3
 {
 
-class MpTcpSocketBase;
+class MpTcpMetaSocket;
 class MpTcpSubflow;
 
 class MpTcpSchedulerFastestRTT : public MpTcpScheduler
@@ -47,7 +47,7 @@ public:
   virtual ~MpTcpSchedulerFastestRTT ();
 
 
-  void SetMeta(Ptr<MpTcpSocketBase> metaSock);
+  void SetMeta(Ptr<MpTcpMetaSocket> metaSock);
 
   /**
    * \brief This function is responsible for generating a list of packets to send
@@ -77,7 +77,7 @@ public:
 
 protected:
 //  uint8_t  m_lastUsedFlowId;        //!< keep track of last used subflow
-  Ptr<MpTcpSocketBase> m_metaSock;  //!<
+  Ptr<MpTcpMetaSocket> m_metaSock;  //!<
 };
 
 

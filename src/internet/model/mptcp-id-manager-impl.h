@@ -114,7 +114,7 @@ public:
 //  RemLocalAddr(uint8_t addrId) ;
 
 protected:
-  friend class MpTcpSocketBase;
+  friend class MpTcpMetaSocket;
 
 
   // MPTCP containers
