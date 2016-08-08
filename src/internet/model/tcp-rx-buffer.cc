@@ -27,15 +27,16 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("TcpRxBuffer");
 
-NS_OBJECT_ENSURE_REGISTERED (TcpRxBuffer);
 
+
+template<>
 TypeId
-TcpRxBuffer::GetTypeId (void)
+TcpRxBuffer<uint32_t, int32_t>::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::TcpRxBuffer")
+  static TypeId tid = TypeId ("ns3::TcpRxBuffer32")
     .SetParent<Object> ()
     .SetGroupName ("Internet")
-    .AddConstructor<TcpRxBuffer> ()
+    .AddConstructor<TcpRxBuffer32> ()
     .AddTraceSource ("NextRxSequence",
                      "Next sequence number expected (RCV.NXT)",
                      MakeTraceSourceAccessor (&TcpRxBuffer::m_nextRxSeq),
@@ -43,6 +44,26 @@ TcpRxBuffer::GetTypeId (void)
   ;
   return tid;
 }
+  
+NS_OBJECT_ENSURE_REGISTERED (TcpRxBuffer32);
+  
+template<>
+TypeId
+TcpRxBuffer<uint64_t, int64_t>::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::TcpRxBuffer64")
+  .SetParent<Object> ()
+  .SetGroupName ("Internet")
+  .AddConstructor<TcpRxBuffer64> ()
+  .AddTraceSource ("NextRxSequence",
+                   "Next sequence number expected (RCV.NXT)",
+                   MakeTraceSourceAccessor (&TcpRxBuffer::m_nextRxSeq),
+                   "ns3::SequenceNumber64TracedValueCallback")
+  ;
+  return tid;
+}
+
+NS_OBJECT_ENSURE_REGISTERED (TcpRxBuffer64);
 
 /* A user is supposed to create a TcpSocket through a factory. In TcpSocket,
  * there are attributes SndBufSize and RcvBufSize to control the default Tx and
@@ -51,73 +72,45 @@ TcpRxBuffer::GetTypeId (void)
  * turn, TcpRxBuffer:SetMaxBufferSize(). Therefore, the m_maxBuffer value
  * initialized below is insignificant.
  */
-TcpRxBuffer::TcpRxBuffer (uint32_t n)
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::TcpRxBuffer (NUMERIC_TYPE n)
   : m_nextRxSeq (n), m_gotFin (false), m_size (0), m_maxBuffer (32768), m_availBytes (0)
 {
 }
 
-TcpRxBuffer::~TcpRxBuffer ()
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::~TcpRxBuffer ()
 {
 }
 
-SequenceNumber32
-TcpRxBuffer::NextRxSequence (void) const
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::NextRxSequence (void) const
 {
   return m_nextRxSeq;
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 void
-TcpRxBuffer::SetNextRxSequence (const SequenceNumber32& s)
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::SetNextRxSequence (const SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>& s)
 {
   m_nextRxSeq = s;
 }
-
-uint32_t
-TcpRxBuffer::MaxBufferSize (void) const
-{
-  return m_maxBuffer;
-}
-
-void
-TcpRxBuffer::SetMaxBufferSize (uint32_t s)
-{
-  m_maxBuffer = s;
-}
-
-uint32_t
-TcpRxBuffer::Size (void) const
-{
-  return m_size;
-}
-
-uint32_t
-TcpRxBuffer::Available () const
-{
-  return m_availBytes;
-}
-
-void
-TcpRxBuffer::IncNextRxSequence ()
-{
-  NS_LOG_FUNCTION (this);
-  // Increment nextRxSeq is valid only if we don't have any data buffered,
-  // this is supposed to be called only during the three-way handshake
-  NS_ASSERT (m_size == 0);
-  m_nextRxSeq++;
-}
   
-SequenceNumber32
-TcpRxBuffer::HeadSequence(void) const
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::HeadSequence(void) const
 {
-  return NextRxSequence() - Available();
+  return NextRxSequence()-Available();
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 void
-TcpRxBuffer::Dump() const
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::Dump() const
 {
   NS_LOG_DEBUG("=== Dumping content of RxBuffer");
   NS_LOG_DEBUG("> nextRxSeq=" << m_nextRxSeq << " Occupancy=" << m_size);
-  std::map<SequenceNumber32, Ptr<Packet> >::const_iterator i = m_data.begin ();
+  BufConstIterator i = m_data.begin ();
   for( ; i != m_data.end (); ++i)
   {
     NS_LOG_DEBUG( "head:" << i->first << " of size:" << i->second->GetSize());
@@ -125,9 +118,49 @@ TcpRxBuffer::Dump() const
   NS_LOG_DEBUG("=== End of dump");
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+uint32_t
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::MaxBufferSize (void) const
+{
+  return m_maxBuffer;
+}
+
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+void
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::SetMaxBufferSize (uint32_t s)
+{
+  m_maxBuffer = s;
+}
+
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+uint32_t
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::Size (void) const
+{
+  return m_size;
+}
+
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+uint32_t
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::Available () const
+{
+  return m_availBytes;
+}
+
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+void
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::IncNextRxSequence ()
+{
+  NS_LOG_FUNCTION (this);
+  // Increment nextRxSeq is valid only if we don't have any data buffered,
+  // this is supposed to be called only during the three-way handshake
+  NS_ASSERT (m_size == 0);
+  m_nextRxSeq++;
+}
+
 // Return the lowest sequence number that this TcpRxBuffer cannot accept
-SequenceNumber32
-TcpRxBuffer::MaxRxSequence (void) const
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::MaxRxSequence (void) const
 {
   if (m_gotFin)
     { // No data allowed beyond FIN
@@ -135,13 +168,14 @@ TcpRxBuffer::MaxRxSequence (void) const
     }
   else if (m_data.size ())
     { // No data allowed beyond Rx window allowed
-      return m_data.begin ()->first + SequenceNumber32 (m_maxBuffer);
+      return m_data.begin ()->first + SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> (m_maxBuffer);
     }
-  return m_nextRxSeq + SequenceNumber32 (m_maxBuffer);
+  return m_nextRxSeq + SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>(m_maxBuffer);
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 void
-TcpRxBuffer::SetFinSequence (const SequenceNumber32& s)
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::SetFinSequence (const SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>& s)
 {
   NS_LOG_FUNCTION (this);
 
@@ -150,20 +184,22 @@ TcpRxBuffer::SetFinSequence (const SequenceNumber32& s)
   if (m_nextRxSeq == m_finSeq) ++m_nextRxSeq;
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 bool
-TcpRxBuffer::Finished (void)
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::Finished (void)
 {
   return (m_gotFin && m_finSeq < m_nextRxSeq);
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 bool
-TcpRxBuffer::Add (Ptr<Packet> p, SequenceNumber32 headSeq)
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::Add (Ptr<Packet> p, SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> headSeq)
 {
   NS_LOG_FUNCTION (this << p << headSeq);
 
   uint32_t pktSize = p->GetSize ();
-  SequenceNumber32 prevHeadSeq = headSeq;
-  SequenceNumber32 tailSeq = headSeq + SequenceNumber32 (pktSize);
+  SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> prevHeadSeq = headSeq;
+  SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> tailSeq = headSeq + SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> (pktSize);
   NS_LOG_LOGIC ("Add pkt " << p << " len=" << pktSize << " seq=" << headSeq
                            << ", when NextRxSeq=" << m_nextRxSeq << ", buffsize=" << m_size);
 
@@ -171,7 +207,7 @@ TcpRxBuffer::Add (Ptr<Packet> p, SequenceNumber32 headSeq)
   if (headSeq < m_nextRxSeq) headSeq = m_nextRxSeq;
   if (m_data.size ())
     {
-      SequenceNumber32 maxSeq = m_data.begin ()->first + SequenceNumber32 (m_maxBuffer);
+      SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> maxSeq = m_data.begin ()->first + SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> (m_maxBuffer);
       if (maxSeq < tailSeq) tailSeq = maxSeq;
       if (tailSeq < headSeq) headSeq = tailSeq;
     }
@@ -179,7 +215,7 @@ TcpRxBuffer::Add (Ptr<Packet> p, SequenceNumber32 headSeq)
   BufIterator i = m_data.begin ();
   while (i != m_data.end () && i->first <= tailSeq)
     {
-      SequenceNumber32 lastByteSeq = i->first + SequenceNumber32 (i->second->GetSize ());
+      SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> lastByteSeq = i->first + SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> (i->second->GetSize ());
       if (lastByteSeq > headSeq)
         {
           if (i->first > headSeq && lastByteSeq < tailSeq)
@@ -239,8 +275,9 @@ TcpRxBuffer::Add (Ptr<Packet> p, SequenceNumber32 headSeq)
   return true;
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 Ptr<Packet>
-TcpRxBuffer::Extract (uint32_t maxSize)
+TcpRxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::Extract (uint32_t maxSize)
 {
   NS_LOG_FUNCTION (this << maxSize);
 
@@ -283,5 +320,9 @@ TcpRxBuffer::Extract (uint32_t maxSize)
                              << ", num pkts in buffer=" << m_data.size ());
   return outPkt;
 }
+
+//Explicit instantiation of the types of TcpRxBuffers
+template class TcpRxBuffer<uint32_t, int32_t>;
+template class TcpRxBuffer<uint64_t, int64_t>;
 
 } //namepsace ns3

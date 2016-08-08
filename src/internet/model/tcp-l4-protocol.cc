@@ -40,12 +40,13 @@
 #include "ipv6-l3-protocol.h"
 #include "ipv6-routing-protocol.h"
 #include "tcp-socket-factory-impl.h"
+#include "mptcp-socket-factory.h"
 #include "tcp-socket-base.h"
 #include "tcp-congestion-ops.h"
 #include "rtt-estimator.h"
 #include "mptcp-meta-socket.h"
-#include "tcp-congestion-ops.h"
 #include "mptcp-subflow.h"
+#include "tcp-socket-impl.h"
 #include "tcp-option-mptcp.h"
 
 #include <vector>
@@ -65,7 +66,7 @@ NS_OBJECT_ENSURE_REGISTERED (TcpL4Protocol);
 
 #undef NS_LOG_APPEND_CONTEXT
 #define NS_LOG_APPEND_CONTEXT                                   \
-  if (m_node) { std::clog << " [node " << m_node->GetId () << "] "; }
+  if (m_node) { std::clog << Simulator::Now ().GetSeconds () << " [node " << m_node->GetId () << "] "; }
 
 /* see http://www.iana.org/assignments/protocol-numbers */
 const uint8_t TcpL4Protocol::PROT_NUMBER = 6;
@@ -87,20 +88,23 @@ TcpL4Protocol::GetTypeId (void)
                    TypeIdValue (TcpNewReno::GetTypeId ()),
                    MakeTypeIdAccessor (&TcpL4Protocol::m_congestionTypeId),
                    MakeTypeIdChecker ())
+//    .AddAttribute ("EnableMpTcp", "Enable or disable MPTCP support",
+//                   BooleanValue (false),
+//                   MakeBooleanAccessor (&TcpL4Protocol::m_mptcpEnabled),
+//                   MakeBooleanChecker ())
     .AddAttribute ("SocketList", "The list of sockets associated to this protocol.",
                    ObjectVectorValue (),
                    MakeObjectVectorAccessor (&TcpL4Protocol::m_sockets),
-                   MakeObjectVectorChecker<TcpSocketBase> ())
-//  .AddAttribute ("EnableMpTcp", "Enable or disable MPTCP support",
-//                  BooleanValue (false),
-//                  MakeBooleanAccessor (&MptcpL4Protocol::m_mptcpEnabled),
-//                  MakeBooleanChecker ())
+                   MakeObjectVectorChecker<TcpSocket> ())
   ;
   return tid;
 }
 
 TcpL4Protocol::TcpL4Protocol ()
-  : m_endPoints (new Ipv4EndPointDemux ()), m_endPoints6 (new Ipv6EndPointDemux ())
+  :
+    m_mptcpEnabled(false),
+    m_endPoints (new Ipv4EndPointDemux ()),
+    m_endPoints6 (new Ipv6EndPointDemux ())
 {
   NS_LOG_FUNCTION_NOARGS ();
   NS_LOG_LOGIC ("Made a TcpL4Protocol " << this);
@@ -108,20 +112,18 @@ TcpL4Protocol::TcpL4Protocol ()
 
 TcpL4Protocol::~TcpL4Protocol ()
 {
-  NS_LOG_FUNCTION (this);
+  NS_LOG_FUNCTION_NOARGS ();
 }
 
 void
 TcpL4Protocol::SetNode (Ptr<Node> node)
 {
-  NS_LOG_FUNCTION (this);
   m_node = node;
 }
 
 void
 TcpL4Protocol::NotifyNewAggregate ()
 {
-  NS_LOG_FUNCTION (this);
   Ptr<Node> node = this->GetObject<Node> ();
   Ptr<Ipv4> ipv4 = this->GetObject<Ipv4> ();
   Ptr<Ipv6> ipv6 = node->GetObject<Ipv6> ();
@@ -134,6 +136,10 @@ TcpL4Protocol::NotifyNewAggregate ()
           Ptr<TcpSocketFactoryImpl> tcpFactory = CreateObject<TcpSocketFactoryImpl> ();
           tcpFactory->SetTcp (this);
           node->AggregateObject (tcpFactory);
+        
+          Ptr<MpTcpSocketFactory> mptcpFactory = CreateObject<MpTcpSocketFactory> ();
+          mptcpFactory->SetTcp (this);
+          node->AggregateObject (mptcpFactory);
         }
     }
 
@@ -191,16 +197,9 @@ TcpL4Protocol::CreateSocket (TypeId congestionTypeId, TypeId socketTypeId)
   ObjectFactory congestionAlgorithmFactory;
   congestionAlgorithmFactory.SetTypeId (congestionTypeId);
   Ptr<TcpCongestionOps> algo = congestionAlgorithmFactory.Create<TcpCongestionOps> ();
-  
+
   return CreateSocket(algo, socketTypeId);
 }
-  
-//// TODO create a ForkSocket Function ?
-//Ptr<Socket>
-//TcpL4Protocol::CreateSocket (TypeId congestionTypeId, TypeId socketTypeId)
-//{
-//}
-  
   
 Ptr<Socket>
 TcpL4Protocol::CreateSocket (Ptr<TcpCongestionOps> algo, TypeId socketTypeId)
@@ -213,20 +212,26 @@ TcpL4Protocol::CreateSocket (Ptr<TcpCongestionOps> algo, TypeId socketTypeId)
   
   Ptr<RttEstimator> rtt = rttFactory.Create<RttEstimator> ();
   
-  Ptr<TcpSocketBase> socket = socketFactory.Create<TcpSocketBase> ();
+  Ptr<TcpSocketImpl> socket;
+  NS_LOG_UNCOND( "socketTypeId=" << socketTypeId );
+  
+  socket = socketFactory.Create<TcpSocketImpl> ();
   
   socket->SetNode (m_node);
   socket->SetTcp (this);
   socket->SetRtt (rtt);
   
-  // TODO solve
   socket->SetCongestionControlAlgorithm (algo);
   
-  Ptr<TcpSocketWrapper> wrapper = CreateObject<TcpSocketWrapper>();
-  wrapper->SetSocket(socket);
+  if (socketTypeId == MpTcpMetaSocket::GetTypeId())
+  {
+    Ptr<MpTcpMetaSocket> meta = DynamicCast<MpTcpMetaSocket>(socket);
+    meta->CreateMasterSubflow();
+  }
   
-  m_sockets.push_back (wrapper);
-  return wrapper;
+  m_sockets.push_back(socket);
+  
+  return socket;
 }
 
 Ptr<Socket>
@@ -448,49 +453,61 @@ TcpL4Protocol::NoEndPointsFound (const TcpHeader &incomingHeader,
       SendPacket (rstPacket, outgoingTcpHeader, incomingDAddr, incomingSAddr);
     }
 }
-  
-Ptr<TcpSocketBase>
+
+Ptr<MpTcpMetaSocket>
 TcpL4Protocol::LookupMpTcpToken (uint32_t token)
 {
-  
-  
-  //! We should find the token
-  NS_LOG_INFO("Looking for token=" << token
-              << " among " << m_sockets.size() << " sockets "
-              );
-  
-  /* We go through all the metas to find one with the correct token */
-  for(std::vector<Ptr<TcpSocketWrapper> >::iterator it = m_sockets.begin(), last(m_sockets.end());
-      it != last;
-      it++)
+
+  if (m_mptcpMetaSockets.find(token) == m_mptcpMetaSockets.end())
   {
-    Ptr<TcpSocket> sock = (*it)->GetSocket();
-    Ptr<MpTcpMetaSocket> meta = DynamicCast<MpTcpMetaSocket>( sock );
-    Address addr;
-    (*it)->GetSockName(addr);
-    NS_LOG_DEBUG("Socket : " << sock << " socket of type=" << sock->GetInstanceTypeId());
-    if(!meta)
-    {
-      NS_LOG_DEBUG("Conversion failed: " << sock << " is not an mptcp socket");
-      continue;
-    }
-    
-    NS_LOG_DEBUG("Conversion succeeded: " << sock << " is an mptcp socket. Comparing "
-                 "meta->GetLocalToken()=" << meta->GetLocalToken() << " and token="<<  token);
-    if(meta->GetLocalToken() == token)
-    {
-      NS_LOG_DEBUG("Found match " << &meta);
-      return meta;
-      
-      //        NS_LOG_DEBUG("Token " << meta->GetToken() << " differ from MP_JOIN token " << join->GetPeerToken());
-      //        continue;
-    }
-    
-    
+    return nullptr;
   }
-  
-  return 0;
+  else
+  {
+    return m_mptcpMetaSockets[token];
+  }
+
+  //! We should find the token
+    NS_LOG_INFO("Looking for token=" << token << " among " << m_sockets.size() << " sockets ");
+
+    /* We go through all the metas to find one with the correct token */
+  for(std::vector<Ptr<TcpSocketImpl>>::iterator it = m_sockets.begin(); it != m_sockets.end(); it++)
+    {
+          Ptr<TcpSocketImpl> sock = *it;
+          Ptr<MpTcpMetaSocket> meta = DynamicCast<MpTcpMetaSocket>(sock);
+          Address addr;
+          (*it)->GetSockName(addr);
+          NS_LOG_DEBUG("Socket : " << sock
+                << " socket of type=" << sock->GetInstanceTypeId());
+          if(!meta)
+          {
+            NS_LOG_DEBUG("Conversion failed: " << sock << " is not an mptcp socket");
+            continue;
+          }
+
+          NS_LOG_DEBUG("Conversion succeeded: " << sock << " is an mptcp socket. Comparing "
+                        "meta->GetLocalToken()=" << meta->GetLocalToken() << " and token="<<  token);
+          if(meta->GetLocalToken() == token)
+          {
+              NS_LOG_DEBUG("Found match " << &meta);
+              return meta;
+
+    //        NS_LOG_DEBUG("Token " << meta->GetToken() << " differ from MP_JOIN token " << join->GetPeerToken());
+    //        continue;
+          }
+
+
+    }
+
+    return 0;
 }
+  
+void TcpL4Protocol::AddTokenMapping(uint32_t token, Ptr<MpTcpMetaSocket> meta)
+{
+  NS_LOG_FUNCTION (this << token << meta);
+  m_mptcpMetaSockets[token] = meta;
+}
+
 
 enum IpL4Protocol::RxStatus
 TcpL4Protocol::Receive (Ptr<Packet> packet,
@@ -511,6 +528,8 @@ TcpL4Protocol::Receive (Ptr<Packet> packet,
       return checksumControl;
     }
 
+  NS_LOG_LOGIC ("TcpL4Protocol " << this << " received a packet");
+
   Ipv4EndPointDemux::EndPoints endPoints;
   endPoints = m_endPoints->Lookup (incomingIpHeader.GetDestination (),
                                    incomingTcpHeader.GetDestinationPort (),
@@ -518,65 +537,6 @@ TcpL4Protocol::Receive (Ptr<Packet> packet,
                                    incomingTcpHeader.GetSourcePort (),
                                    incomingInterface);
   
-  /**
-   TODO clean this part, maybe MptcpL4Protocol should be reworked a bit
-   **/
-  if (endPoints.empty())
-  {
-    NS_LOG_LOGIC ("No Ipv4 endpoints matched on MptcpL4Protocol, "
-                  "checking if packet is a MP_JOIN request:" << incomingIpHeader);
-    
-    // MPTCP related modification----------------------------
-    // Extract MPTCP options if there is any
-    Ptr<const TcpOptionMpTcpJoin> join;
-    Ptr<MpTcpMetaSocket> meta;
-    
-    // If it is a SYN packet with an MP_JOIN option
-    if( (incomingTcpHeader.GetFlags() & TcpHeader::SYN)
-       && GetTcpOption(incomingTcpHeader, join)
-       && join->GetMode() == TcpOptionMpTcpJoin::Syn
-       )
-    {
-      NS_LOG_DEBUG("This is indeed a MP_JOIN");
-      
-      meta = DynamicCast<MpTcpMetaSocket>(LookupMpTcpToken(join->GetPeerToken()));
-      if(meta)
-      {
-        
-        NS_LOG_LOGIC ("Found meta " << meta << " matching MP_JOIN token=" << join->GetPeerToken());
-        
-        Ipv4EndPoint *endP =  meta->NewSubflowRequest(packet,
-                                                      incomingTcpHeader,
-                                                      InetSocketAddress(incomingIpHeader.GetSource(), incomingTcpHeader.GetSourcePort() ),
-                                                      InetSocketAddress(incomingIpHeader.GetDestination(), incomingTcpHeader.GetDestinationPort() ) ,
-                                                      join
-                                                      );
-        
-        NS_LOG_DEBUG("value of endP=" << endP);
-        
-        // TODO check that it sends a RST otherwise
-        if(endP)
-        {
-          NS_LOG_DEBUG("subflow endpoint pushed in vector");
-          endPoints.push_back(endP);
-          
-          // if we don't break here, then it will infintely loop, each time pushing a new SocketBase with a valid token
-          //return IpL4Protocol::RX_OK;
-        }
-      }
-    }
-    
-    //        NS_ASSERT_MSG(endPoints.size () == 1, "Demux returned more or less than one endpoint");
-    //        (*endPoints.begin())->ForwardUp(packet, ipHeader, tcpHeader.GetSourcePort(), incomingInterface);
-    
-    //    }
-    //    else {
-    //      NS_LOG_DEBUG("Ignore MP_JOIN with state " << join->GetState());
-    //    }
-    
-    
-  }
-
   if (endPoints.empty ())
     {
       if (this->GetObject<Ipv6L3Protocol> () != 0)
@@ -593,8 +553,7 @@ TcpL4Protocol::Receive (Ptr<Packet> packet,
           return (this->Receive (packet, ipv6Header, fakeInterface));
         }
 
-      NS_LOG_LOGIC ("TcpL4Protocol " << this << " received a packet but"
-                    " no endpoints matched." <<
+      NS_LOG_LOGIC ("No endpoints matched on TcpL4Protocol "<< this <<
                     " destination IP: " << incomingIpHeader.GetDestination () <<
                     " destination port: "<< incomingTcpHeader.GetDestinationPort () <<
                     " source IP: " << incomingIpHeader.GetSource () <<
@@ -608,8 +567,7 @@ TcpL4Protocol::Receive (Ptr<Packet> packet,
     }
 
   NS_ASSERT_MSG (endPoints.size () == 1, "Demux returned more than one endpoint");
-  NS_LOG_LOGIC ("TcpL4Protocol " << this << " received a packet and"
-                " now forwarding it up to endpoint/socket");
+  NS_LOG_LOGIC ("TcpL4Protocol " << this << " forwarding up to endpoint/socket" << (*endPoints.begin ()));
 
   (*endPoints.begin ())->ForwardUp (packet, incomingIpHeader,
                                     incomingTcpHeader.GetSourcePort (),
@@ -642,6 +600,7 @@ TcpL4Protocol::Receive (Ptr<Packet> packet,
       return checksumControl;
     }
 
+  NS_LOG_LOGIC ("TcpL4Protocol " << this << " received a packet");
   Ipv6EndPointDemux::EndPoints endPoints =
     m_endPoints6->Lookup (incomingIpHeader.GetDestinationAddress (),
                           incomingTcpHeader.GetDestinationPort (),
@@ -649,8 +608,7 @@ TcpL4Protocol::Receive (Ptr<Packet> packet,
                           incomingTcpHeader.GetSourcePort (), interface);
   if (endPoints.empty ())
     {
-      NS_LOG_LOGIC ("TcpL4Protocol " << this << " received a packet but"
-                    " no endpoints matched." <<
+      NS_LOG_LOGIC ("No endpoints matched on TcpL4Protocol "<< this <<
                     " destination IP: " << incomingIpHeader.GetDestinationAddress () <<
                     " destination port: "<< incomingTcpHeader.GetDestinationPort () <<
                     " source IP: " << incomingIpHeader.GetSourceAddress () <<
@@ -663,8 +621,7 @@ TcpL4Protocol::Receive (Ptr<Packet> packet,
     }
 
   NS_ASSERT_MSG (endPoints.size () == 1, "Demux returned more than one endpoint");
-  NS_LOG_LOGIC ("TcpL4Protocol " << this << " received a packet and"
-                " now forwarding it up to endpoint/socket");
+  NS_LOG_LOGIC ("TcpL4Protocol " << this << " forwarding up to endpoint/socket");
 
   (*endPoints.begin ())->ForwardUp (packet, incomingIpHeader,
                                     incomingTcpHeader.GetSourcePort (), interface);
@@ -827,28 +784,28 @@ void
 TcpL4Protocol::DumpSockets () const
 {
   NS_LOG_UNCOND ("== Dumping sockets ==");
-  for(std::vector<Ptr<TcpSocketWrapper> >::const_iterator it = m_sockets.cbegin(), last(m_sockets.cend());
+  for(std::vector<Ptr<TcpSocketImpl> >::const_iterator it = m_sockets.cbegin(), last(m_sockets.cend());
       it != last;
       it++
       )
   {
-    Ptr<TcpSocket> sock = (*it)->GetSocket();
+    Ptr<TcpSocket> sock = (*it);
     NS_LOG_DEBUG("Socket : " << sock << " socket of type=" << sock->GetInstanceTypeId());
   }
   NS_LOG_UNCOND ("== end of dump ==");
 }
-  
+
 bool
 TcpL4Protocol::AddSocket (Ptr<TcpSocketBase> socket)
 {
   NS_LOG_FUNCTION(socket);
   // TODO remove afterwards
   DumpSockets();
-  
-  std::vector<Ptr<TcpSocketWrapper> >::iterator it = std::find(m_sockets.begin(), m_sockets.end(), socket->GetSocketWrapper());
+
+  std::vector<Ptr<TcpSocketImpl>>::iterator it = std::find(m_sockets.begin(), m_sockets.end(), socket);
   if (it == m_sockets.end())
   {
-    m_sockets.push_back (socket->GetSocketWrapper());
+    m_sockets.push_back (socket);
     return true;
   }
   return false;
@@ -857,12 +814,11 @@ TcpL4Protocol::AddSocket (Ptr<TcpSocketBase> socket)
 bool
 TcpL4Protocol::RemoveSocket (Ptr<TcpSocketBase> socket)
 {
-  NS_LOG_FUNCTION (this << socket);
-  std::vector<Ptr<TcpSocketWrapper> >::iterator it = m_sockets.begin ();
+  std::vector<Ptr<TcpSocketImpl>>::iterator it = m_sockets.begin ();
 
   while (it != m_sockets.end ())
     {
-      if ((*it)->GetSocket() == socket)
+      if ((*it) == socket)
         {
           m_sockets.erase (it);
           return true;
@@ -872,6 +828,7 @@ TcpL4Protocol::RemoveSocket (Ptr<TcpSocketBase> socket)
     }
 
   return false;
+//  std::remove(m_sockets.begin(), m_sockets.end(), socket);
 }
 
 void

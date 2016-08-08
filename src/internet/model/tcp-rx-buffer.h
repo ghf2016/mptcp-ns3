@@ -37,6 +37,8 @@ class Packet;
  * \brief class for the reordering buffer that keeps the data from lower layer, i.e.
  *        TcpL4Protocol, sent to the application
  */
+  
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 class TcpRxBuffer : public Object
 {
 public:
@@ -49,7 +51,7 @@ public:
    * \brief Constructor
    * \param n initial Sequence number to be received
    */
-  TcpRxBuffer (uint32_t n = 0);
+  TcpRxBuffer (NUMERIC_TYPE n = 0);
   virtual ~TcpRxBuffer ();
 
   // Accessors
@@ -57,38 +59,35 @@ public:
    * \brief Get Next Rx Sequence number
    * \returns Next Rx Sequence number
    */
-  SequenceNumber32 NextRxSequence (void) const;
+  SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> NextRxSequence (void) const;
   /**
    * \brief Get the lowest sequence number that this TcpRxBuffer cannot accept
    * \returns the lowest sequence number that this TcpRxBuffer cannot accept
    */
-  SequenceNumber32 MaxRxSequence (void) const;
+  SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> MaxRxSequence (void) const;
   /**
    * \brief Increment the Next Sequence number
    */
   void IncNextRxSequence (void);
+  
+  /**
+   * \return First in order sequence sumber
+   *
+   **/
+  SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> HeadSequence(void) const;
+  
+  void Dump() const;
+  
   /**
    * \brief Set the Next Sequence number
    * \param s the Sequence number
    */
-  
-  /**
-   * \brief Returns the lowest sequence number in the TcpRxBuffer
-   * \return First in order sequence sumber
-   *
-   **/
-  SequenceNumber32 HeadSequence(void) const;
-  
-  
-  void Dump() const;
-
-  
-  void SetNextRxSequence (const SequenceNumber32& s);
+  void SetNextRxSequence (const SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>& s);
   /**
    * \brief Set the FIN Sequence number (i.e., the one closing the connection)
    * \param s the Sequence number
    */
-  void SetFinSequence (const SequenceNumber32& s);
+  void SetFinSequence (const SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>& s);
   /**
    * \brief Get the Maximum buffer size
    * \returns the Maximum buffer size
@@ -126,28 +125,32 @@ public:
    * \param tcph packet's TCP header
    * \return True when success, false otherwise.
    */
-  bool Add (Ptr<Packet> p, SequenceNumber32 headSeq);
+  bool Add (Ptr<Packet> p, SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> headSeq);
 
   /**
    * Extract data from the head of the buffer as indicated by nextRxSeq.
    * The extracted data is going to be forwarded to the application.
    *
-   * \param maxSize maximum number of bytes to extract
+   * \param maxSize maximum number of bytes to extract, right now the max is ~4GB
    * \returns a packet
    */
   Ptr<Packet> Extract (uint32_t maxSize);
 
 private:
   /// container for data stored in the buffer
-  typedef std::map<SequenceNumber32, Ptr<Packet> >::iterator BufIterator;
-  TracedValue<SequenceNumber32> m_nextRxSeq; //!< Seqnum of the first missing byte in data (RCV.NXT)
-  SequenceNumber32 m_finSeq;                 //!< Seqnum of the FIN packet
+  typedef typename std::map<SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>, Ptr<Packet> >::iterator BufIterator;
+  typedef typename std::map<SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>, Ptr<Packet> >::const_iterator BufConstIterator;
+  TracedValue<SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>>  m_nextRxSeq; //!< Seqnum of the first missing byte in data (RCV.NXT)
+  SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>               m_finSeq;                 //!< Seqnum of the FIN packet
   bool m_gotFin;                             //!< Did I received FIN packet?
   uint32_t m_size;                           //!< Number of total data bytes in the buffer, not necessarily contiguous
   uint32_t m_maxBuffer;                      //!< Upper bound of the number of data bytes in buffer (RCV.WND)
   uint32_t m_availBytes;                     //!< Number of bytes available to read, i.e. contiguous block at head
-  std::map<SequenceNumber32, Ptr<Packet> > m_data; //!< Corresponding data (may be null)
+  std::map<SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>, Ptr<Packet> > m_data; //!< Corresponding data (may be null)
 };
+  
+typedef TcpRxBuffer<uint32_t, int32_t> TcpRxBuffer32;
+typedef TcpRxBuffer<uint64_t, int64_t> TcpRxBuffer64;
 
 } //namepsace ns3
 

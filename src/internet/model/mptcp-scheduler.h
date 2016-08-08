@@ -25,13 +25,17 @@
 #include "ns3/ptr.h"
 #include "ns3/object.h"
 #include "ns3/sequence-number.h"
-//#include "ns3/mp-tcp-socket-base.h"
+#include <utility>
 
 
 namespace ns3
 {
+  
+using namespace std;
 
 class MpTcpMetaSocket;
+class MpTcpMapping;
+class MpTcpSubflow;
 
 /**
  * This class is responsible for
@@ -73,18 +77,22 @@ public:
    * \param activeSubflowArrayId
    * \param uint16_t
    * \return true if could generate a mapping
-   * \see MpTcpMetaSocket::SendPendingData
+   * \see MptcpMetaSocket::SendPendingData
    */
-  virtual bool GenerateMapping(
-        int& activeSubflowArrayId, SequenceNumber64& dsn, uint16_t& length
-                              ) = 0;
+  virtual bool GenerateMapping(int& activeSubflowArrayId, SequenceNumber64& dsn, uint16_t& length) = 0;
 
   virtual void SetMeta(Ptr<MpTcpMetaSocket> metaSock) = 0;
+  
+  virtual Ptr<MpTcpSubflow> GetAvailableSubflow (uint32_t dataToSend, uint32_t metaWindow) = 0;
+  
+  //Get subflow to send empty control packets on, e.g. DATA_FIN.
+  virtual Ptr<MpTcpSubflow> GetAvailableControlSubflow () = 0;
+  
   /**
   \brief
   \return Subflow on which to send
   **/
-//  virtual Ptr<MpTcpSubflow> GetSubflowToUse(Ptr<MpTcpMetaSocket> metaSock);
+//  virtual Ptr<MpTcpSubflow> GetSubflowToUse(Ptr<MptcpMetaSocket> metaSock);
 
 };
 

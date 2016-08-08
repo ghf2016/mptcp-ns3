@@ -26,7 +26,6 @@
 #include "ns3/mptcp-scheduler.h"
 #include "ns3/object.h"
 #include "ns3/ptr.h"
-#include "ns3/mptcp-scheduler-round-robin.h"
 #include <vector>
 #include <list>
 
@@ -71,13 +70,13 @@ public:
   // TODO
   // chooseSubflowForRetransmit
 
-  /**
-  Return Index of subflow to use
-  */
-  virtual Ptr<MpTcpSubflow> GetSubflowToUseForEmptyPacket();
+  
+  virtual Ptr<MpTcpSubflow> GetAvailableSubflow (uint32_t dataToSend, uint32_t metaWindow);
+  
+  virtual Ptr<MpTcpSubflow> GetAvailableControlSubflow ();
 
 protected:
-  uint8_t  m_lastUsedFlowId;        //!< keep track of last used subflow
+  uint32_t  m_lastUsedFlowId;        //!< keep track of last used subflow
   Ptr<MpTcpMetaSocket> m_metaSock;  //!<
 };
 

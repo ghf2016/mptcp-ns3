@@ -714,13 +714,15 @@ TcpOptionMpTcpDSS::TruncateDSS(bool truncate)
 
 
 void
-TcpOptionMpTcpDSS::SetMapping (uint64_t headDsn, uint32_t headSsn, uint16_t length, bool enable_dfin)
+TcpOptionMpTcpDSS::SetMapping (const SequenceNumber64& headDsn,
+                               const SequenceNumber32& headSsn,
+                               uint16_t length, bool enable_dfin)
 {
   NS_ASSERT_MSG ( !(m_flags & DataFin), "For now you can't set mapping after enabling datafin");
 //  NS_ASSERT_MSG ( !(m_flags & DSNMappingPresent), "You already set a mapping");
 
-  m_dsn = headDsn;
-  m_ssn = headSsn;
+  m_dsn = headDsn.GetValue();
+  m_ssn = headSsn.GetValue();
   // += in case there is a datafin
   m_dataLevelLength = length;
   m_flags |= DSNMappingPresent;
@@ -745,23 +747,23 @@ TcpOptionMpTcpDSS::GetMapping (uint64_t& dsn, uint32_t& ssn, uint16_t& length) c
     }
 }
   
-uint64_t TcpOptionMpTcpDSS::GetDataSequenceNumber () const
+SequenceNumber64 TcpOptionMpTcpDSS::GetDataSequenceNumber () const
 {
-  return m_dsn;
+  return SequenceNumber64(m_dsn);
 }
-
-uint32_t TcpOptionMpTcpDSS::GetSubflowSequenceNumber () const
+  
+SequenceNumber32 TcpOptionMpTcpDSS::GetSubflowSequenceNumber () const
 {
-  return m_ssn;
+  return SequenceNumber32(m_ssn);
 }
-
+  
 uint16_t TcpOptionMpTcpDSS::GetMappingLength () const
 {
   uint16_t length = m_dataLevelLength;
-  if (GetFlags () & DataFin)
+  /*if((m_flags & DataFin) && !DataFinMappingOnly())
   {
-    length--;
-  }
+    return --length;
+  }*/
   return length;
 }
 
@@ -773,11 +775,12 @@ TcpOptionMpTcpDSS::GetSerializedSize (void) const
   return len;
 }
 
-uint64_t
+SequenceNumber64
 TcpOptionMpTcpDSS::GetDataAck (void) const
 {
-  NS_ASSERT_MSG ( m_flags & DataAckPresent, "Can't request DataAck value when DataAck flag was not set. Check for its presence first" );
-  return m_dataAck;
+  NS_ASSERT_MSG (m_flags & DataAckPresent,
+                 "Can't request DataAck value when DataAck flag was not set. Check for its presence first" );
+  return SequenceNumber64(m_dataAck);
 }
 
 
@@ -858,7 +861,7 @@ TcpOptionMpTcpDSS::Serialize (Buffer::Iterator i) const
         }
       else
         {
-          i.WriteHtonU32 ( m_dsn );
+          i.WriteHtonU32 (uint32_t(m_dsn));
         }
 
       // Write relative SSN
@@ -1009,7 +1012,7 @@ TcpOptionMpTcpDSS::GetDataFinDSN () const
 
 
 void
-TcpOptionMpTcpDSS::SetDataAck (const uint64_t& dack, const bool& send_as_32bits)
+TcpOptionMpTcpDSS::SetDataAck (uint64_t dack, bool send_as_32bits)
 {
   NS_LOG_LOGIC (this << dack);
 

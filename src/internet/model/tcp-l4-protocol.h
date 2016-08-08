@@ -22,13 +22,14 @@
 #define TCP_L4_PROTOCOL_H
 
 #include <stdint.h>
+#include <unordered_map>
 
 #include "ns3/ipv4-address.h"
 #include "ns3/ipv6-address.h"
 #include "ns3/sequence-number.h"
 #include "ip-l4-protocol.h"
-#include "tcp-socket-wrapper.h"
-
+#include "ns3/net-device.h"
+#include "ns3/tcp-socket.h"
 
 namespace ns3 {
 
@@ -38,29 +39,18 @@ class TcpHeader;
 class Ipv4EndPointDemux;
 class Ipv6EndPointDemux;
 class Ipv4Interface;
-class TcpSocketBase;
 class Ipv4EndPoint;
 class Ipv6EndPoint;
+//class MpTcpSubflow;
+class TcpSocketBase;
+class MpTcpMetaSocket;
 class TcpCongestionOps;
-class NetDevice;
-
-
-/**
- * \ingroup internet
- * \defgroup tcp TCP
- *
- * This is an implementation of various Transmission Control Protocol flavors.
- *
- * Each TCP flavors is studied to match a specific environment, and they
- * differ mainly in the congestion control algorithms used.
- *
- * See \RFC{793} and others.
- */
+class TcpSocketImpl;
 
 /**
  * \ingroup tcp
  * \brief TCP socket creation and multiplexing/demultiplexing
- * 
+ *
  * A single instance of this class is held by one instance of class Node.
  *
  * The creation of TcpSocket are handled in the method CreateSocket, which is
@@ -104,23 +94,28 @@ public:
    * of the TCP protocol
    */
   Ptr<Socket> CreateSocket (void);
-  
-  Ptr<Socket> CreateSocket (TypeId congestionTypeId, TypeId socketTypeId);
-  Ptr<Socket> CreateSocket (Ptr<TcpCongestionOps> algo, TypeId socketTypeId);
-  
-  void DumpSockets () const;
 
   /**
-   * \brief Create a TCP socket using the specified congestion control algorithm TypeId
+   * \brief Create a TCP socket using the specified TypeId
    *
    * \return A smart Socket pointer to a TcpSocket allocated by this instance
    * of the TCP protocol
    *
-   * \warning using a congestionTypeId other than TCP is a bad idea.
+   * \warning using a socketTypeId other than TCP is a bad idea.
    *
-   * \param congestionTypeId the congestion control algorithm TypeId
+   * \param socketTypeId the socket TypeId
    */
   Ptr<Socket> CreateSocket (TypeId congestionTypeId);
+  Ptr<Socket> CreateSocket (TypeId congestionTypeId, TypeId socketTypeId);
+  Ptr<Socket> CreateSocket (Ptr<TcpCongestionOps> algo, TypeId socketTypeId);
+
+  /**
+   * \param inplace true if it's a fork, if it should share memory
+   fork it first then do inplace where you want
+   */
+//  Ptr<MpTcpSubflow>
+//  UpgradeToMptcpSocketBase(Ptr<TcpSocketBase> socket);
+  void DumpSockets () const;
 
   /**
    * \brief Allocate an IPv4 Endpoint
@@ -190,11 +185,14 @@ public:
    */
   Ipv6EndPoint *Allocate6 (Ipv6Address localAddress, uint16_t localPort,
                            Ipv6Address peerAddress, uint16_t peerPort);
-  
+
   /**
-   *
+   * Given a token reprensenting an MPTCP connection, lookup the corresponding meta socket.
    */
-  Ptr<TcpSocketBase> LookupMpTcpToken (uint32_t token);
+  Ptr<MpTcpMetaSocket> LookupMpTcpToken (uint32_t token);
+
+  void AddTokenMapping(uint32_t token, Ptr<MpTcpMetaSocket> meta);
+  
 
   /**
    * \brief Send a packet via TCP (IP-agnostic)
@@ -306,14 +304,17 @@ protected:
 
 private:
   Ptr<Node> m_node;                //!< the node this stack is associated with
-  bool m_mptcpEnabled;             //!< Mptcp option enabled
+  bool m_mptcpEnabled;             //!< MpTcp option enabled
   Ipv4EndPointDemux *m_endPoints;  //!< A list of IPv4 end points.
   Ipv6EndPointDemux *m_endPoints6; //!< A list of IPv6 end points.
   TypeId m_rttTypeId;              //!< The RTT Estimator TypeId
   TypeId m_congestionTypeId;       //!< The socket TypeId
-  std::vector<Ptr<TcpSocketWrapper> > m_sockets;      //!< list of sockets (or rather socket proxies)
+  std::vector<Ptr<TcpSocketImpl> > m_sockets;      //!< list of sockets
   IpL4Protocol::DownTargetCallback m_downTarget;   //!< Callback to send packets over IPv4
   IpL4Protocol::DownTargetCallback6 m_downTarget6; //!< Callback to send packets over IPv6
+  
+  //Multipath meta sockets, keyed by their tokens.
+  std::unordered_map<uint32_t, Ptr<MpTcpMetaSocket>> m_mptcpMetaSockets;
 
   /**
    * \brief Copy constructor

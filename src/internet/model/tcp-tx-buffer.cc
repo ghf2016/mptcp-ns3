@@ -32,23 +32,44 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("TcpTxBuffer");
 
-NS_OBJECT_ENSURE_REGISTERED (TcpTxBuffer);
 
+//Define two different types of TcpTxBuffers
+template<>
 TypeId
-TcpTxBuffer::GetTypeId (void)
+TcpTxBuffer<uint32_t, int32_t>::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::TcpTxBuffer")
+  static TypeId tid = TypeId ("ns3::TcpTxBuffer32")
     .SetParent<Object> ()
     .SetGroupName ("Internet")
-    .AddConstructor<TcpTxBuffer> ()
+    .AddConstructor<TcpTxBuffer32> ()
     .AddTraceSource ("UnackSequence",
                      "First unacknowledged sequence number (SND.UNA)",
-                     MakeTraceSourceAccessor (&TcpTxBuffer::m_firstByteSeq),
+                     MakeTraceSourceAccessor (&TcpTxBuffer32::m_firstByteSeq),
                      "ns3::SequenceNumber32TracedValueCallback")
   ;
   return tid;
 }
-
+  
+NS_OBJECT_ENSURE_REGISTERED (TcpTxBuffer32);
+  
+  template<>
+  TypeId
+  TcpTxBuffer<uint64_t, int64_t>::GetTypeId (void)
+  {
+    static TypeId tid = TypeId ("ns3::TcpTxBuffer64")
+    .SetParent<Object> ()
+    .SetGroupName ("Internet")
+    .AddConstructor<TcpTxBuffer64> ()
+    .AddTraceSource ("UnackSequence",
+                     "First unacknowledged sequence number (SND.UNA)",
+                     MakeTraceSourceAccessor (&TcpTxBuffer64::m_firstByteSeq),
+                     "ns3::SequenceNumber64TracedValueCallback")
+    ;
+    return tid;
+  }
+  
+NS_OBJECT_ENSURE_REGISTERED (TcpTxBuffer64);
+  
 /* A user is supposed to create a TcpSocket through a factory. In TcpSocket,
  * there are attributes SndBufSize and RcvBufSize to control the default Tx and
  * Rx window sizes respectively, with default of 128 KiByte. The attribute
@@ -56,53 +77,63 @@ TcpTxBuffer::GetTypeId (void)
  * turn, TcpTxBuffer:SetMaxBufferSize(). Therefore, the m_maxBuffer value
  * initialized below is insignificant.
  */
-TcpTxBuffer::TcpTxBuffer (uint32_t n)
+  
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::TcpTxBuffer (NUMERIC_TYPE n)
   : m_firstByteSeq (n), m_size (0), m_maxBuffer (32768), m_data (0)
 {
 }
 
-TcpTxBuffer::~TcpTxBuffer (void)
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::~TcpTxBuffer (void)
 {
 }
 
-SequenceNumber32
-TcpTxBuffer::HeadSequence (void) const
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::HeadSequence (void) const
 {
   return m_firstByteSeq;
 }
 
-SequenceNumber32
-TcpTxBuffer::TailSequence (void) const
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
+SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::TailSequence (void) const
 {
-  return m_firstByteSeq + SequenceNumber32 (m_size);
+  return m_firstByteSeq + SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> (m_size);
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 uint32_t
-TcpTxBuffer::Size (void) const
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::Size (void) const
 {
   return m_size;
 }
-
+  
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 uint32_t
-TcpTxBuffer::MaxBufferSize (void) const
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::MaxBufferSize (void) const
 {
   return m_maxBuffer;
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 void
-TcpTxBuffer::SetMaxBufferSize (uint32_t n)
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::SetMaxBufferSize (uint32_t n)
 {
   m_maxBuffer = n;
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 uint32_t
-TcpTxBuffer::Available (void) const
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::Available (void) const
 {
   return m_maxBuffer - m_size;
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 bool
-TcpTxBuffer::Add (Ptr<Packet> p)
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::Add (Ptr<Packet> p)
 {
   NS_LOG_FUNCTION (this << p);
   NS_LOG_LOGIC ("Packet of size " << p->GetSize () << " appending to window starting at "
@@ -121,20 +152,23 @@ TcpTxBuffer::Add (Ptr<Packet> p)
   return false;
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 uint32_t
-TcpTxBuffer::SizeFromSequence (const SequenceNumber32& seq) const
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::SizeFromSequence (const SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>& seq) const
 {
   NS_LOG_FUNCTION (this << seq);
   // Sequence of last byte in buffer
-  SequenceNumber32 lastSeq = m_firstByteSeq + SequenceNumber32 (m_size);
+  SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE> lastSeq = m_firstByteSeq + SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>(m_size);
   // Non-negative size
   NS_LOG_LOGIC ("HeadSeq=" << m_firstByteSeq << ", lastSeq=" << lastSeq << ", size=" << m_size <<
                 ", returns " << lastSeq - seq);
   return lastSeq - seq;
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 Ptr<Packet>
-TcpTxBuffer::CopyFromSequence (uint32_t numBytes, const SequenceNumber32& seq)
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::CopyFromSequence (uint32_t numBytes,
+                                                          const SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>& seq)
 {
   NS_LOG_FUNCTION (this << numBytes << seq);
   uint32_t s = std::min (numBytes, SizeFromSequence (seq)); // Real size to extract. Insure not beyond end of data
@@ -201,15 +235,17 @@ TcpTxBuffer::CopyFromSequence (uint32_t numBytes, const SequenceNumber32& seq)
   return outPacket;
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 void
-TcpTxBuffer::SetHeadSequence (const SequenceNumber32& seq)
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::SetHeadSequence (const SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>& seq)
 {
   NS_LOG_FUNCTION (this << seq);
   m_firstByteSeq = seq;
 }
 
+template<typename NUMERIC_TYPE, typename SIGNED_TYPE>
 void
-TcpTxBuffer::DiscardUpTo (const SequenceNumber32& seq)
+TcpTxBuffer<NUMERIC_TYPE, SIGNED_TYPE>::DiscardUpTo (const SequenceNumber<NUMERIC_TYPE, SIGNED_TYPE>& seq)
 {
   NS_LOG_FUNCTION (this << seq);
   NS_LOG_LOGIC ("current data size=" << m_size << ", headSeq=" << m_firstByteSeq << ", maxBuffer=" << m_maxBuffer
@@ -252,5 +288,9 @@ TcpTxBuffer::DiscardUpTo (const SequenceNumber32& seq)
                         <<" numPkts="<< m_data.size ());
   NS_ASSERT (m_firstByteSeq == seq);
 }
+  
+//Explicit instantiation of the TcpTxBuffer types
+template class TcpTxBuffer<uint32_t, int32_t>;
+template class TcpTxBuffer<uint64_t, int64_t>;
 
 } // namepsace ns3

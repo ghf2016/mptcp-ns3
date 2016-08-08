@@ -18,20 +18,23 @@
  *
  * Author:  Matthieu Coudron <matthieu.coudron@lip6.fr>
  *          Morteza Kheirkhah <m.kheirkhah@sussex.ac.uk>
+ *          Lynne Salameh <l.salameh@cs.ucl.ac.uk>
  */
 #ifndef MPTCP_SOCKET_BASE_H
 #define MPTCP_SOCKET_BASE_H
 
 #include "ns3/callback.h"
-#include "ns3/mptcp-mapping.h"
-#include "ns3/tcp-socket-base.h"
+#include "mptcp-mapping.h"
+#include "tcp-socket-impl.h"
+#include "tcp-socket-base.h"
 //#include "ns3/mp-tcp-path-manager.h"
 //#include "ns3/gnuplot.h"
 //#include "mp-tcp-subflow.h"
 
 //#include "ns3/mp-tcp-cc.h"
 #include "ns3/inet-socket-address.h"
-#include "ns3/mptcp-scheduler-round-robin.h"
+#include "mptcp-scheduler-round-robin.h"
+#include "tcp-parameters.h"
 
 //using namespace std;
 
@@ -49,22 +52,13 @@ class TcpOptionMpTcpDSS;
 class TcpOptionMpTcpJoin;
 class OutputStreamWrapper;
 
+using namespace std;
 
 /**
 TODO move all the supplementary stuff to MpTcpSocketState
 
-*/
-//class MpTcpSocketState : TcpSocketState
-//{
-//
-//public:
-//    MpTcpSocketState();
-//    ~MpTcpSocketState();
-//
-//};
-
 /**
- * \class MpTcpMetaSocket
+* \class MpTcpMetaSocket
 
 This is the MPTCP meta socket the application talks with
 this socket. New subflows, as well as the first one (the master
@@ -74,7 +68,7 @@ Every data transfer happens on a subflow.
 Following the linux kernel from UCL (http://multipath-tcp.org) convention,
 the first established subflow is called the "master" subflow.
 
-This inherits TcpSocketBase so that it can be  used as any other TCP variant:
+This inherits MptcpSocketBase so that it can be  used as any other TCP variant:
 this is the backward compability feature that is required in RFC.
 Also doing so allows to run TCP tests with MPTCP via for instance the command
 Config::SetDefault ("ns3::TcpL4Protocol::SocketType", "ns3::MpTcpOlia");
@@ -93,205 +87,63 @@ even if that subflow got closed during the MpTcpConnection.
 
 ConnectionSucceeded may be called twice; once when it goes to established
 and the second time when it sees
- Simulator::ScheduleNow(&MpTcpMetaSocket::ConnectionSucceeded, this);
-
-TODO:
--rename in MetaSocket ?
--Ideally it could & should inherit from TcpSocket rather TcpSocketBase
--should use 64 bits based buffer / sq nb
-
-**/
-class MpTcpMetaSocket : public TcpSocketBase
-// public TcpSocket
+Simulator::ScheduleNow(&MpTcpMetaSocket::ConnectionSucceeded, this);
+ 
+ **/
+class MpTcpMetaSocket : public TcpSocketImpl
 
 {
 public:
-  /** public methods
-  TODO this could be done differently
-  **/
-  typedef std::vector< Ptr<MpTcpSubflow> > SubflowList;
-
+  
   static TypeId GetTypeId(void);
-
-  virtual TypeId GetInstanceTypeId (void) const;
-
+  
+  virtual TypeId GetInstanceTypeId (void) const override;
+  
   MpTcpMetaSocket();
-  MpTcpMetaSocket(const MpTcpMetaSocket&);
-  MpTcpMetaSocket(const TcpSocketBase&);
-
+  MpTcpMetaSocket(const MpTcpMetaSocket& sock);
+  
   virtual ~MpTcpMetaSocket();
-
+  
+  typedef enum {
+    MptcpMetaClosed = 0,      /**< Socket is closed  */
+    MptcpMetaListening,       /**< Listening for a connection */
+    MptcpMetaPreEstablished,  /**< Master socket is in SYN_SENT or SYN_RCVD state */
+    MptcpMetaEstablished,     /**< Connection is established */
+    MptcpMetaCloseWait,       /**< Remote side has shutdown and is waiting for
+                               *  us to finish writing our data and to shutdown
+                               *  (we have to close() to move on to LAST_ACK) */
+    MptcpMetaLastAck,         /**< Our side has shutdown after remote has
+                               *  shutdown.  There may still be data in our
+                               *  buffer that we have to finish sending  */
+    MptcpMetaFinWait1,   /**< Our side has shutdown, waiting to complete
+                          *  transmission of remaining buffered data  */
+    MptcpMetaFinWait2,   /**< All buffered data sent, waiting for remote to shutdown */
+    MptcpMetaClosing,      /**< Both sides have shutdown but we still have
+                            *  data we have to finish sending */
+    MptcpMetaTimeWait    /**< Timeout to catch resent junk before entering
+                          *  closed, can only be entered from FIN_WAIT2
+                          *  or CLOSING.  Required because the other end
+                          *  may not have gotten our last ACK causing it
+                          *  to retransmit the data packet (which we ignore) */
+  } MpTcpMetaSocketState;
+  
   /**
-   * Should be called only by subflows when they update their receiver window
+   * Called by a sublflow to update the receive window size
    */
-  virtual bool UpdateWindowSize(uint32_t windowSize);
-
-protected:
-   ////////////////////////////////////////////
-   /// List of overriden callbacks
-   ////////////////////////////////////////////
+  bool UpdateWindowSize (uint32_t windowSize);
+  
+  /*********************************************
+   * Interface methods inherited from Socket
+   *********************************************/
+  
+  virtual int Bind() override;
+  virtual int Bind(const Address &address) override;
+  virtual int Bind6 () override;
+  virtual int Connect(const Address &address) override;
+  virtual int Listen(void) override;
+  
   /**
-   * This is callback called by subflow NotifyNewConnectionCreated. If
-   * the calling subflow is the master, then the call is forwarded through meta's
-   * NotifyNewConnectionCreated, else it is forward to the JoinCreatedCallback
-   *
-   * \see Socket::NotifyNewConnectionCreated
-   */
-  virtual void OnSubflowCreated (Ptr<Socket> socket, const Address &from);
-  virtual void OnSubflowConnectionFailure (Ptr<Socket> socket);
-  virtual void OnSubflowConnectionSuccess (Ptr<Socket> socket);
-
-public:
-  /**
-  these callbacks will be passed on to
-   * \see Socket::Set
-   */
-  virtual void
-  SetSubflowAcceptCallback(Callback<bool, Ptr<MpTcpMetaSocket>, const Address &, const Address & > connectionRequest,
-                           Callback<void, Ptr<MpTcpSubflow> > connectionCreated
-                           );
-
-  virtual void
-  SetSubflowConnectCallback(Callback<void, Ptr<MpTcpSubflow> > connectionSucceeded,
-                           Callback<void, Ptr<MpTcpSubflow> > connectionFailure
-                            );
-
-//  virtual void
-//  SetJoinCreatedCallback(Callback<void, Ptr<MpTcpSubflow> >);
-
-  /**
-   * Triggers callback registered by SetSubflowAcceptCallback
-   */
-  void
-  NotifySubflowCreated(Ptr<MpTcpSubflow> sf);
-
-  /**
-   * Triggers callback registered by SetSubflowConnectCallback
-   */
-  void
-  NotifySubflowConnected(Ptr<MpTcpSubflow> sf);
-
-  /**
-   * Called when a subflow TCP state is updated.
-   * It detects such events by tracing its subflow m_state.
-   *
-   */
-  virtual void
-  OnSubflowNewCwnd(std::string context, uint32_t oldCwnd, uint32_t newCwnd);
-
-  /**
-   * Initiates a new subflow with MP_JOIN
-   *
-   * Wrapper that just creates a subflow, bind it to a specific address
-   * and then establishes the connection
-   */
-  virtual int
-  ConnectNewSubflow(const Address &local, const Address &remote);
-
-  virtual void
-  DoRetransmit();
-
-  /**
-   * Called when a subflow TCP state is updated.
-   * It detects such events by tracing its subflow m_state.
-   *
-   * \param context
-   * \param sf Subflow that changed state
-   * \param oldState previous TCP state of the subflow
-   * \param newState new TCP state of the subflow
-   */
-  virtual void
-  OnSubflowNewState(
-    std::string context,
-    Ptr<MpTcpSubflow> sf,
-    TcpStates_t  oldState,
-    TcpStates_t newState
-    );
-
-  // Window Management
-  virtual uint32_t
-  BytesInFlight();  // Return total bytes in flight of a subflow
-
-  void
-  DumpRxBuffers(Ptr<MpTcpSubflow> sf) const;
-
-//  void
-//  ProcessWait(Ptr<Packet> packet, const TcpHeader& tcpHeader);
-
-//  static void
-//  GenerateTokenForKey( mptcp_crypto_t alg, uint64_t key, uint32_t& token, uint64_t& idsn);
-
-  /* Sum congestio nwindows across subflows to compute global cwin
-  WARNING: it does not take flows that are closing yet so that may be a weakness depending on the scenario
-  to update
-  TODO: should be done in the congestion controller
-  */
-  virtual uint32_t
-  ComputeTotalCWND();
-
-  virtual uint16_t
-  AdvertisedWindowSize();
-
-  // TODO remove
-  virtual uint32_t
-  AvailableWindow();
-  /**
-  \warn This function should be called once a connection is established else
-  **/
-//  virtual bool IsMpTcpEnabled() const;
-
-
-  virtual void CloseAndNotify(void);
-
-  /** Limit the size of in-flight data by cwnd and receiver's rxwin */
-  virtual uint32_t
-  Window (void);
-
-  virtual void
-  PersistTimeout();
-
-  /* equivalent to PeerClose
-  \param finalDsn
-  OnDataFin
-  */
-  virtual void
-  PeerClose( SequenceNumber32 fin_seq, Ptr<MpTcpSubflow> sf);
-
-  virtual void
-  OnInfiniteMapping(Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf);
-
-  /* equivalent to TCP Rst */
-  virtual void
-  SendFastClose(Ptr<MpTcpSubflow> sf);
-
-  /**
-  \brief Generates random key, setups isdn and token
-  **/
-//  virtual uint64_t GenerateKey();
-
-
-
-  /**
-  * TODO when is it considered
-  * move to TcpSocketBase ?
-  * \return
-  */
-  bool IsConnected() const;
-
-  // Public interface for MPTCP
-  // Disabled
-  virtual int Bind();
-  virtual int Bind(const Address &address);
-  virtual int Connect(const Address &address);
-
-  // TODO to remove there is no equivalent in parent's class
-//  virtual int Connect(Ipv4Address servAddr, uint16_t servPort);
-
-  //! Disabled
-  virtual int Listen(void);
-
-  /**
-   * \brief Same as MpTcpMetaSocket::Close
+   * \brief Same as TcpSocket::Close
    *
    * The default behavior is to do nothing until all the data is transmitted.
    * Only then are
@@ -304,68 +156,200 @@ public:
    - A DATA_FIN has the semantics and behavior as a regular TCP FIN, but
    at the connection level.  Notably, it is only DATA_ACKed once all
    data has been successfully received at the connection level
-  */
-  // socket function member
-  virtual int Close(void);
-
-  /**
-  RFC 6824
-  - If all subflows have
-   been closed with a FIN exchange, but no DATA_FIN has been received
-   and acknowledged, the MPTCP connection is treated as closed only
-   after a timeout.  This implies that an implementation will have
-   TIME_WAIT states at both the subflow and connection levels (see
-   Appendix C).  This permits "break-before-make" scenarios where
-   connectivity is lost on all subflows before a new one can be re-
-   established.
-  */
-//  virtual void
-//  PeerClose(Ptr<Packet>, const TcpHeader&); // Received a FIN from peer, notify rx buffer
-
-  /* called by subflow when it sees a DSS with the DATAFIN flag
-  Params are ignored
-  \param packet Ignored
-  */
-  virtual void
-  PeerClose(Ptr<Packet> packet, const TcpHeader&); // Received a FIN from peer, notify rx buffer
-  virtual void
-  DoPeerClose(void); // FIN is in sequence, notify app and respond with a FIN
-
-  virtual int DoClose(void);
-//  virtual void
-//  CloseAndNotify(void); // To CLOSED state, notify upper layer, and deallocate end point
-
-  virtual uint32_t GetTxAvailable() const;
-  virtual uint32_t GetRxAvailable(void) const;
-
-  // TODO maybe this could be removed ?
-//  void DoForwardUp(Ptr<Packet> packet, Ipv4Header header, uint16_t port, Ptr<Ipv4Interface> incomingInterface);
-  virtual void ForwardUp (Ptr<Packet> packet, Ipv4Header header, uint16_t port, Ptr<Ipv4Interface> incomingInterface);
-
-  /**
-  \return Number of connected subflows (that is that ran the 3whs)
-  */
-  SubflowList::size_type GetNActiveSubflows() const;
-
-
-  /**
-  *
-  * \return an established subflow
-  */
-  virtual Ptr<MpTcpSubflow> GetSubflow(uint8_t) const;
-
-
-  // can Potentially be removed ?
-  virtual void ClosingOnEmpty(TcpHeader& header);
-
-  /**
-   * \brief Send a fast close
-   *
-   * Sends RST on all subflows
-   * and MP_FASTCLOSE on one of the subflows
    */
-  virtual void SendRST(void);
-
+  
+  //TODO: shutdown send
+  virtual int Close(void) override;
+  virtual int ShutdownSend (void) override;
+  virtual int ShutdownRecv (void) override;
+  
+  virtual uint32_t GetTxAvailable() const override;
+  virtual uint32_t GetRxAvailable(void) const override;
+  
+  virtual SequenceNumber64 GetNextTxSequence() const;
+  
+  /** Inherit from Socket class: Return data to upper-layer application. Parameter flags
+   is not used. Data is returned as a packet of size no larger than maxSize */
+  virtual Ptr<Packet> RecvFrom (uint32_t maxSize, uint32_t flags, Address &fromAddress) override;
+  virtual Ptr<Packet> Recv(uint32_t maxSize, uint32_t flags) override;
+  virtual int Send(Ptr<Packet> p, uint32_t flags) override;
+  virtual int SendTo (Ptr<Packet> p, uint32_t flags, const Address &toAddress) override;
+  
+  //TODO: what does this mean for multipath?
+  virtual int GetSockName (Address &address) const override;
+  virtual int GetPeerName (Address &address) const override;
+  
+  virtual enum Socket::SocketErrno GetErrno (void) const override;
+  
+  virtual Ptr<TcpTxBuffer64> GetTxBuffer (void) const;
+  virtual Ptr<TcpRxBuffer64> GetRxBuffer (void) const;
+  
+  /*****************************************
+   * Subflow Management
+   ****************************************/
+  
+  /**
+   * return Number of connected subflows (that is that ran the 3whs)
+   */
+  uint32_t GetNActiveSubflows() const;
+  
+  
+  /**
+   * \return an established subflow
+   */
+  virtual Ptr<MpTcpSubflow> GetActiveSubflow(uint32_t index) const;
+  
+  
+  /**
+   * Called by TcpL4Protocol to create the master subflow
+   */
+  void CreateMasterSubflow ();
+  
+  /**
+   called by listening socket when receiving a new SYN with the MP_JOIN option.
+   **/
+  virtual void NewSubflowJoinRequest(Ptr<Packet> p,
+                                     const TcpHeader& header,
+                                     const Address& fromAddress,
+                                     const Address& toAddress,
+                                     Ptr<const TcpOptionMpTcpJoin> join);
+  
+  /********************************************
+   * Connection Key and Tokens
+   *******************************************/
+  
+  /**
+   @brief According to RFC 6824, the token is used to identify the MPTCP connection and is a
+   cryptographic hash of the receiver's key, as exchanged in the initial
+   MP_CAPABLE handshake (Section 3.1).  In this specification, the
+   tokens presented in this option are generated by the SHA-1 algorithm, truncated to the most significant 32 bits.
+   */
+  
+  uint64_t GetPeerKey() const;
+  
+  /**
+   \note Setting a remote key has the side effect of enabling MPTCP on the socket
+   */
+  void SetPeerKey(uint64_t aKey);
+  
+  /**
+   \brief Generated during the initial 3 WHS
+   */
+  uint64_t GetLocalKey() const;
+  
+  /**
+   * \return Hash of the local key
+   */
+  uint32_t GetLocalToken() const;
+  
+  /**
+   * \return Hash of the peer key
+   */
+  uint32_t GetPeerToken() const;
+  
+  /**************************************
+   *
+   **************************************/
+  
+  /**
+   *  Update tx buffer when we've received a new ack on one of the subflows
+   * @brief Called from subflows when they receive DATA-ACK.
+   */
+  virtual void NewAck(Ptr<MpTcpSubflow> subflow, const SequenceNumber64& dataLevelSeq);
+  
+  // MPTCP specfic version
+  virtual void ReceivedAck (Ptr<MpTcpSubflow> sf, const SequenceNumber64& dack);
+  
+  /**
+   We need to update the connection level receive buffer on receiving new data,
+   and notify the app.
+   */
+  virtual void OnSubflowRecv(Ptr<MpTcpSubflow> sf,
+                             Ptr<Packet> p,
+                             const TcpHeader& tcpHeader,
+                             SequenceNumber64 expectedDSN,
+                             Ptr<MpTcpMapping> mapping);
+  
+  virtual bool AddToReceiveBuffer(Ptr<MpTcpSubflow> sf,
+                                  Ptr<Packet> p,
+                                  const TcpHeader& tcpHeader,
+                                  Ptr<MpTcpMapping> mapping);
+  
+  /***************************************
+   * Subflow Callbacks
+   ***************************************/
+  /**
+   these callbacks will be passed on to
+   * \see Socket::Set
+   */
+  virtual void SetSubflowAcceptCallback(Callback<bool, Ptr<MpTcpMetaSocket>, const Address &, const Address & > connectionRequest,
+                                        Callback<void, Ptr<MpTcpSubflow> > connectionCreated);
+  
+  virtual void SetSubflowConnectCallback(Callback<void, Ptr<MpTcpSubflow> > connectionSucceeded,
+                                         Callback<void, Ptr<MpTcpSubflow> > connectionFailure);
+  
+  //  virtual void
+  //  SetJoinCreatedCallback(Callback<void, Ptr<MpTcpSubflow> >);
+  
+  /**
+   * Triggers callback registered by SetSubflowAcceptCallback
+   */
+  void NotifySubflowCreated(Ptr<MpTcpSubflow> sf);
+  
+  /**
+   * Triggers callback registered by SetSubflowConnectCallback
+   */
+  void NotifySubflowConnected(Ptr<MpTcpSubflow> sf);
+  
+  
+  static void
+  NotifySubflowUpdateCwnd(Ptr<MpTcpMetaSocket> meta,
+                          Ptr<MpTcpSubflow> sf,
+                          uint32_t oldCwnd,
+                          uint32_t newCwnd);
+  
+  /**
+   * Called when a subflow TCP state is updated.
+   * It detects such events by tracing its subflow m_state.
+   *
+   */
+  virtual void OnSubflowUpdateCwnd(Ptr<MpTcpSubflow> subflow, uint32_t oldCwnd, uint32_t newCwnd);
+  
+  
+  static void
+  NotifySubflowNewState(Ptr<MpTcpMetaSocket> meta,
+                        Ptr<MpTcpSubflow> sf,
+                        TcpSocket::TcpStates_t  oldState,
+                        TcpSocket::TcpStates_t newState);
+  
+  /**
+   * Called when a subflow TCP state is updated.
+   * It detects such events by tracing its subflow m_state.
+   *
+   * \param sf Subflow that changed state
+   * \param oldState previous TCP state of the subflow
+   * \param newState new TCP state of the subflow
+   */
+  virtual void OnSubflowNewState(Ptr<MpTcpSubflow> sf,
+                                 TcpStates_t oldState,
+                                 TcpStates_t newState);
+  
+  
+  /**
+   * Initiates a new subflow with MP_JOIN
+   *
+   * Wrapper that just creates a subflow, bind it to a specific address
+   * and then establishes the connection
+   */
+  virtual int ConnectNewSubflow(const Address &local, const Address &remote);
+  
+  
+  
+  
+  /*********************************************
+   * Connection Establishment
+   *********************************************/
+  
   /**
    * The connection is considered fully established
    * when it can create new subflows, i.e., when it received
@@ -379,94 +363,190 @@ public:
    */
   virtual void BecomeFullyEstablished();
 
-  /** TODO superseed into TcpSocketBase
-  Here it sends MP_FIN
-   */
-  virtual void SendFin();
-
-  /**
-  public equivalent ?
-  * \brief
-  * \param srcAddr Address to bind to. In theory Can be an InetSocketAddress or an Inet6SocketAddress
-  * for now just InetSocketAddress
-  */
-  Ptr<MpTcpSubflow> CreateSubflow(bool masterSocket);
-
-  /**
-   * Initiate
-   * TODO rename into SetupSubflow ?
-   */
-  virtual void AddSubflow(Ptr<MpTcpSubflow> sf);
-
-
-  // Path management related functions
-
-//  virtual int GenerateToken(uint32_t& token ) const;
-
+  bool IsConnected() const;
+  
+  virtual void EstablishSubflow(Ptr<MpTcpSubflow> subflow, Ptr<Packet> packet, const TcpHeader& tcpHeader);
+  
+  
+  virtual void DoRetransmit();
+  
+  // Window Management
+  
+  void DumpRxBuffers(Ptr<MpTcpSubflow> sf) const;
+  
+  virtual uint32_t AvailableWindow();
+  virtual uint32_t GetRwndSize ();
+  virtual uint32_t UnAckDataCount ();
+  
+  virtual void PersistTimeout();
+  
+  
+  virtual void OnInfiniteMapping(Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf);
+  
   virtual void Destroy(void);
+  
   /**
-  \return 0 In case of success
-  TODO bool ?
-  **/
-  //int GetPeerKey(uint64_t& remoteKey) const;
-  uint64_t GetPeerKey() const;
-
-  /**
-  \brief Generated during the initial 3 WHS
-  */
-  uint64_t GetLocalKey() const;
-
-  /**
-   * \return Hash of the local key
-   */
-  uint32_t GetLocalToken() const;
-
-  /**
-   * \return Hash of the peer key
-   */
-  uint32_t GetPeerToken() const;
-
-    /**
-  For now it looks there is no way to know that an ip interface went up so we will assume until
-  further notice that IPs of the client don't change.
-  -1st callback called on receiving an ADD_ADDR
-  -2nd callback called on receiving REM_ADDR
-  (TODO this class should automatically register)
-  **/
+   For now it looks there is no way to know that an ip interface went up so we will assume until
+   further notice that IPs of the client don't change.
+   -1st callback called on receiving an ADD_ADDR
+   -2nd callback called on receiving REM_ADDR
+   (TODO this class should automatically register)
+   **/
   void SetNewAddrCallback(Callback<bool, Ptr<Socket>, Address, uint8_t> remoteAddAddrCb,
                           Callback<void, uint8_t> remoteRemAddrCb);
 
   /**
    *
    */
-  void GetAllAdvertisedDestinations(std::vector<InetSocketAddress>& );
-
-public: // public variables
-  typedef enum {
-    Established = 0, /* contains ESTABLISHED/CLOSE_WAIT */
-    // TODO rename to restart
-    Others = 1,     /**< Composed of SYN_RCVD, SYN_SENT*/
-    Closing,        /**< CLOSE_WAIT, FIN_WAIT */
-    Maximum         /**< keep it last, used to decalre array */
-  } mptcp_container_t;
-  // TODO move back to protected/private later on
-
-  /**
-   * Local token generated from this connection key
-   *
-   * \return
-   */
-//  virtual uint32_t GetToken() const;
-
-
-  // TODO can be removed
-  virtual void
-  CompleteFork(Ptr<const Packet> p, const TcpHeader& h, const Address& fromAddress, const Address& toAddress);
+  void GetAllAdvertisedDestinations(vector<InetSocketAddress>& );
+  
+  
+  virtual void CompleteFork(Ptr<Packet> p, const TcpHeader& h,
+                            const Address& fromAddress, const Address& toAddress) override;
 
 protected: // protected methods
-
-  friend class Tcp;
+  
   friend class MpTcpSubflow;
+  
+  /*********************************************
+   * Connection Termination
+   *********************************************/
+  
+  /**
+   RFC 6824
+   - If all subflows have
+   been closed with a FIN exchange, but no DATA_FIN has been received
+   and acknowledged, the MPTCP connection is treated as closed only
+   after a timeout.  This implies that an implementation will have
+   TIME_WAIT states at both the subflow and connection levels (see
+   Appendix C).  This permits "break-before-make" scenarios where
+   connectivity is lost on all subflows before a new one can be re-
+   established.
+   */
+  
+  
+  /* equivalent to PeerClose
+   \param finalDsn
+   OnDataFin
+   */
+  virtual void PeerClose(SequenceNumber64 dsn, Ptr<MpTcpSubflow> sf);
+  
+  /* called by subflow when it sees a DSS with the DATAFIN flag
+   // DATA FIN is in sequence, notify app and respond with a Data ACK
+   */
+  
+  virtual void DoPeerClose(Ptr<MpTcpSubflow> sf);
+  
+  virtual int DoClose(void);
+  
+  virtual void CloseAndNotify(void); //Nofity application
+  
+  virtual void LastAckTimeout();
+  
+  
+  /* equivalent to TCP Rst */
+  virtual void SendFastClose(Ptr<MpTcpSubflow> sf);
+  
+  /** TODO superseed into TcpSocketBase
+   Here it sends MP_FIN
+   */
+  virtual void SendDataFin(bool withAck);
+  
+  virtual void CancelAllEvents ();
+  
+  /*
+   * Subflow Creation
+   */
+  
+  /**
+   * \brief
+   * \param masterSocket Whether the new subflow is a master subflow
+   */
+  Ptr<MpTcpSubflow> CreateSubflow(bool masterSocket);
+  
+  /**
+   * Add subflow to the subflows list, and register trace functions
+   */
+  virtual void AddSubflow(Ptr<MpTcpSubflow> sf,  bool isMaster);
+  
+  /**
+   * This is callback called by subflow NotifyNewConnectionCreated. If
+   * the calling subflow is the master, then the call is forwarded through meta's
+   * NotifyNewConnectionCreated, else it is forward to the JoinCreatedCallback
+   *
+   * \see Socket::NotifyNewConnectionCreated
+   */
+  virtual void OnSubflowCreated (Ptr<Socket> socket, const Address &from);
+  virtual void OnSubflowConnectionFailure (Ptr<Socket> socket);
+  virtual void OnSubflowConnectionSuccess (Ptr<Socket> socket);
+  
+  virtual bool OnSubflowConnectionRequest(Ptr<Socket> socket, const Address &from);
+  virtual void OnSubflowNewConnectionCreated(Ptr<Socket> socket, const Address &from);
+  
+  /*
+   Remove subflow from containers
+   TODO should also erase its id from the path id manager
+   \sf
+   \param reset True if closing due to reset
+   */
+  void OnSubflowClosed(Ptr<MpTcpSubflow> sf, bool reset);
+  
+  void OnSubflowDupAck(Ptr<MpTcpSubflow> sf);
+  
+  /**
+   Called when a subflow that initiated the connection
+   gets established
+   
+   TODO rename into ConnectionSucceeded
+   Notify ?
+   **/
+  virtual void OnSubflowEstablishment(Ptr<MpTcpSubflow>);
+  
+  /**
+   Called when a subflow that received a connection
+   request gets established
+   
+   TODO I don't like the name,rename later
+   */
+  virtual void OnSubflowEstablished(Ptr<MpTcpSubflow> subflow);
+  
+  /**
+   Should be called when subflows enters FIN_WAIT or LAST_ACK
+   */
+  virtual void OnSubflowClosing(Ptr<MpTcpSubflow>);
+  
+  
+  //When a subflow calls NotifyDataSent
+  virtual void OnSubflowDataSent(Ptr<Socket> socket, uint32_t dataSent);
+  
+  //When a subflow calls NofityConnectionRequest
+  //virtual void OnSubflowConnectionRequest(const Address &from);
+  
+  
+  
+  //////////////////////////////////////////////////////////////////
+  ////  Here follows a list of MPTCP specific *callbacks* triggered by subflows
+  ////  on certain events
+  
+  /**
+   * @param
+   * @param mapping
+   add count param ?
+   */
+  virtual void OnSubflowDupack(Ptr<MpTcpSubflow> sf, MpTcpMapping mapping);
+  
+  virtual void OnSubflowRetransmit(Ptr<MpTcpSubflow> sf);
+  
+  
+  
+  /**
+   * \brief Call CopyObject<> to clone me
+   * \returns a copy of the socket
+   */
+  virtual Ptr<TcpSocketImpl> Fork (void) override;
+  
+  virtual Ptr<TcpSocketImpl> Fork (Ptr<MpTcpSubflow> subflow);
+  
   /**
    * Expects InetXSocketAddress
    */
@@ -476,111 +556,37 @@ protected: // protected methods
    */
   bool OwnIP(const Address& address) const;
   /**
-    * Should be called after having sent a dataFIN
-    * Should send a RST on all subflows in state Other
-    * and a FIN for Established subflows
-    */
+   * Should be called after having sent a dataFIN
+   * Should send a RST on all subflows in state Other
+   * and a FIN for Established subflows
+   */
   virtual void CloseAllSubflows();
 
   // MPTCP connection and subflow set up
-
-  virtual int SetupCallback(void);  // Setup SetRxCallback & SetRxCallback call back for a host
-  // Same as parent's
-//  virtual int  SetupEndpoint (void); // Configure local address for given remote address in a host - it query a routing protocol to find a source
-
-  /*
-  Remove subflow from containers
-  TODO should also erase its id from the path id manager
-  \sf
-  \param reset True if closing due to reset
-  */
-  void
-  OnSubflowClosed(Ptr<MpTcpSubflow> sf, bool reset);
-
-  void
-  OnSubflowDupAck(Ptr<MpTcpSubflow> sf);
-
-  /**
-  \param dataSeq Used to reconstruct the mapping
-  Currently used as callback for subflows
-  */
-  virtual void
-  OnSubflowRecv(
-                Ptr<MpTcpSubflow> sf
-//                SequenceNumber32 dataSeq, Ptr<Socket> sock
-                );
-
-
-
+  
   /* close all subflows
-  */
-  virtual void
-  TimeWait();
-
-  /**
-   * \brief Creates a DSS option if does not exist and configures it to have a dataack
-   * TODO what happens if existing datack already set ?
    */
-//  virtual void
-//  AppendDataAck(TcpHeader& hdr) const;
-//  virtual void AppendDataFin(TcpHeader& header) const;
-
+  virtual void TimeWait();
+  
+  
   /**
-  Called when a subflow that initiated the connection
-  gets established
-
-  TODO rename into ConnectionSucceeded
-  Notify ?
-  **/
-  virtual void OnSubflowEstablishment(Ptr<MpTcpSubflow>);
-
-  /**
-  Called when a subflow that received a connection
-  request gets established
-
-  TODO I don't like the name,rename later
-  */
-  virtual void OnSubflowEstablished(Ptr<MpTcpSubflow> subflow);
-
-  /**
-  Should be called when subflows enters FIN_WAIT or LAST_ACK
-  */
-  virtual void OnSubflowClosing(Ptr<MpTcpSubflow>);
-
-
-  /**
-  Fails if
-  **/
-//  bool AddLocalAddress(uint8_t&, Port);
-// Should generate an Id
-
-//  void SetAddrEventCallback(Callback<bool, Ptr<Socket>, Address, uint8_t> remoteAddAddrCb,
-//                          Callback<void, uint8_t> remoteRemAddrCb);
+   Fails if
+   **/
+  //  bool AddLocalAddress(uint8_t&, Port);
+  // Should generate an Id
+  
+  //  void SetAddrEventCallback(Callback<bool, Ptr<Socket>, Address, uint8_t> remoteAddAddrCb,
+  //                          Callback<void, uint8_t> remoteRemAddrCb);
   //virtual RemoteAddAddr
   void NotifyRemoteAddAddr(Address address);
   void NotifyRemoteRemAddr(uint8_t addrId);
-
-  /**
-  \bug convert to uint64_t ?
-  \note Setting a remote key has the sideeffect of enabling MPTCP on the socket
-  */
-  void SetPeerKey(uint64_t );
-
-  virtual void
-  ConnectionSucceeded(void); // Schedule-friendly wrapper for Socket::NotifyConnectionSucceeded()
-
-
-  //! disabled
-  virtual int DoConnect(void);
-
+  
+  
+  virtual void ConnectionSucceeded(Ptr<MpTcpSubflow> subflow);
+  
   // Transfer operations
-//  void ForwardUp(Ptr<Packet> p, Ipv4Header header, uint16_t port, Ptr<Ipv4Interface> interface);
-
-  /** Inherit from Socket class: Return data to upper-layer application. Parameter flags
-   is not used. Data is returned as a packet of size no larger than maxSize */
-  virtual Ptr<Packet> Recv(uint32_t maxSize, uint32_t flags);
-  virtual int Send(Ptr<Packet> p, uint32_t flags);
-
+  //  void ForwardUp(Ptr<Packet> p, Ipv4Header header, uint16_t port, Ptr<Ipv4Interface> interface);
+  
   /**
    * Sending data via subflows with available window size. It sends data only to ESTABLISHED subflows.
    * It sends data by calling SendDataPacket() function.
@@ -591,141 +597,34 @@ protected: // protected methods
    * send as  much as possible
    * \return true if it send mappings
    */
-  virtual bool SendPendingData(bool withAck = false);
-
-
-  /** disabled
-  */
-  virtual uint32_t
-  SendDataPacket(SequenceNumber32 seq, uint32_t maxSize, bool withAck);
-
-  //! Disabled
-  virtual void ProcessListen  (Ptr<Packet>, const TcpHeader&, const Address&, const Address&);
-
-  // Manage data Tx/Rx
-//  virtual Ptr<TcpSocketBase> Fork(void);
-
-
+  virtual bool SendPendingData();
+  
+  
   virtual void ReTxTimeout();
 
 
   virtual void Retransmit();
-  // TODO see if we can remove/override parents
-
-  //! Disabled
-  virtual void ReceivedAck ( Ptr<Packet>, const TcpHeader&); // Received an ACK packet
-
-  // MPTCP specfic version
-  virtual void ReceivedAck (
-    SequenceNumber32 dack
-  , Ptr<MpTcpSubflow> sf
-  , bool count_dupacks
-  );
-
-  //! Disabled
-  virtual void ReceivedData ( Ptr<Packet>, const TcpHeader&); // Recv of a data, put into buffer, call L7 to get it if necessary
-
-//  virtual void ProcessDSS( const TcpHeader& tcpHeader, Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf);
-//  virtual void ProcessDSSClosing( Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf);
-//  virtual void ProcessDSSWait( Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf);
-//  virtual void ProcessDSSEstablished( const TcpHeader& tcpHeader, Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf);
-
-
+  
+  
   /** Does nothing */
-//  virtual void EstimateRtt (const TcpHeader&);
-
-
-//  Time ComputeReTxTimeoutForSubflow( Ptr<MpTcpSubflow> );
-
+  //  virtual void EstimateRtt (const TcpHeader&);
+  
+  
+  //  Time ComputeReTxTimeoutForSubflow( Ptr<MpTcpSubflow> );
+  
   /**
    * Part of the logic was implemented but this is non-working.
    * \return Always false
    */
   virtual bool IsInfiniteMappingEnabled() const;
   virtual bool DoChecksum() const;
-
-  //////////////////////////////////////////////////////////////////
-  ////  Here follows a list of MPTCP specific *callbacks* triggered by subflows
-  ////  on certain events
-
-  /**
-   * @param
-   * @param mapping
-   add count param ?
-  */
-  virtual void
-  OnSubflowDupack(Ptr<MpTcpSubflow> sf, MpTcpMapping mapping);
-
-  virtual void
-  OnSubflowRetransmit(Ptr<MpTcpSubflow> sf) ;
-
-//  void LastAckTimeout(uint8_t sFlowIdx);
-
-  virtual void
-  OnSubflowNewAck(
-//    SequenceNumber32 const& ack,
-      Ptr<MpTcpSubflow> sf);
-
-
-  /**
-   * Free space as much as possible
-   * Goes through all subflows
-   */
-  virtual void SyncTxBuffers();
-
-  /**
-   * Free space as much as possible
-   * TODO rename or move to MpTcpSubflow
-   */
-  virtual void SyncTxBuffers(Ptr<MpTcpSubflow> sf);
-
-  /**
-   *  inherited from parent: update buffers
-   * @brief Called from subflows when they receive DATA-ACK. For now calls parent fct
-   */
-  virtual void NewAck(SequenceNumber32 const& dataLevelSeq, bool resetRTO);
-
-  //! disabled
-  virtual void SendEmptyPacket(TcpHeader& header);
-
-  // Not implemented yet
-//  virtual void
-//  NewAck(SequenceNumber64 const& dataLevelSeq);
-
-
-  /**
-   *
-   */
-//  virtual void ProcessMpTcpOptions(TcpHeader h, Ptr<MpTcpSubflow> sf);
-
-
+  
+  
   virtual void OnTimeWaitTimeOut();
-
-
-protected: // protected variables
-
-  virtual void UpdateTxBuffer();
-
-  friend class TcpL4Protocol;
-  // TODO make it so this is not necessary
-  // like putting m_nextTxSequence in MpTcpScheduler and make it friend ?
-  friend class MpTcpSchedulerRoundRobin;
-  friend class MpTcpSchedulerFastestRTT;
-
-
-  /**
-  called by TcpL4protocol when receiving an MP_JOIN taht does not fit
-  to any Ipv4endpoint. Thus twe create one.
-  **/
-  virtual Ipv4EndPoint*
-  NewSubflowRequest(Ptr<Packet> p,
-                    const TcpHeader & header,
-                    const Address & fromAddress,
-                    const Address & toAddress,
-                    Ptr<const TcpOptionMpTcpJoin> join);
-
+  
+  
   // ?
-//  int CloseSubflow(Ptr<MpTcpSubflow> sf);
+  //  int CloseSubflow(Ptr<MpTcpSubflow> sf);
 
 
   /**
@@ -734,82 +633,102 @@ protected: // protected variables
    */
   virtual void DumpSubflows() const;
 
-  /**
-   *
-   */
-  SubflowList m_subflows[Maximum];
-
-  Callback<bool, Ptr<Socket>, Address, uint8_t > m_onRemoteAddAddr;  //!< return true to create a subflow
-//  Callback<bool, Ptr<Socket>, Address, uint8_t > m_onNewLocalIp;  //!< return true to create a subflow
-  Callback<void, uint8_t > m_onAddrDeletion;    // return true to create a subflow
-
-//  Callback<void, const MpTcpAddressInfo& > m_onRemAddr;
-
-//  virtual void OnAddAddress(MpTcpAddressInfo);
-//  virtual void OnRemAddress();
-
-public:
-//  std::string m_tracePrefix;      //!< help naming csv files, TODO should be removed
-//  int m_prefixCounter;      //!< TODO remove and put in a helper
-
-protected:
+  
+  //  Callback<void, const MpTcpAddressInfo& > m_onRemAddr;
+  
+  //  virtual void OnAddAddress(MpTcpAddressInfo);
+  //  virtual void OnRemAddress();
+  
   virtual void CreateScheduler(TypeId schedulerTypeId);
-
-  // TODO rename since will track local too.
-  Ptr<MpTcpPathIdManager> m_remotePathIdManager;  //!< Keep track of advertised ADDR id advertised by remote endhost
-
-
-  /***
-  TODO the scheduler is so closely
-  Rename into MpTcpScheduler
-  ***/
-  Ptr<MpTcpScheduler> m_scheduler;  //!<
-
-  // TODO make private ? check what it does
-  // should be able to rmeove one
-  bool m_server;  //!< True if this socket is the result of a fork, ie it was originally LISTENing
-
-private:
-  // TODO rename into m_localKey  and move tokens into subflow (maybe not even needed)
-//  uint64_t m_localKey;    //!< Store local host token, generated during the 3-way handshake
-//  uint32_t m_localToken;  //!< Generated from key
-
-  uint64_t m_peerKey; //!< Store remote host token
-  uint32_t m_peerToken;
-
-  bool     m_doChecksum;  //!< Compute the checksum. Negociated during 3WHS. Unused
-
-  bool     m_receivedDSS;  //!< True if we received at least one DSS
-
-private:
-
-
-  /* Utility function used when a subflow changes state
-   *  Research of the subflow is done
-   * \warn This function does not check if the destination container is
-   */
-  void MoveSubflow(Ptr<MpTcpSubflow> sf, mptcp_container_t to);
-
+  
   /**
-   * Asserts if from == to
+   * Generate a unique key for this host
+   *
+   * \see mptcp_set_key_sk
    */
-  void MoveSubflow(Ptr<MpTcpSubflow> sf, mptcp_container_t from, mptcp_container_t to);
-
+  virtual uint64_t GenerateUniqueMpTcpKey();
+  
+  typedef vector<Ptr<MpTcpSubflow>> SubflowList;
+  SubflowList GetSubflowsWithState(TcpStates_t state);
+  
   Callback<void, Ptr<MpTcpSubflow> > m_subflowConnectionSucceeded;  //!< connection succeeded callback
   Callback<void, Ptr<MpTcpSubflow> > m_subflowConnectionFailure;     //!< connection failed callback
-//  Callback<void, Ptr<Socket> >                   m_normalClose;          //!< connection closed callback
-//  Callback<void, Ptr<Socket> >                   m_errorClose;           //!< connection closed due to errors callback
+  //  Callback<void, Ptr<Socket> >                   m_normalClose;          //!< connection closed callback
+  //  Callback<void, Ptr<Socket> >                   m_errorClose;           //!< connection closed due to errors callback
   Callback<bool, Ptr<MpTcpMetaSocket>, const Address &, const Address & >       m_joinRequest;    //!< connection request callback
   Callback<void, Ptr<MpTcpSubflow> >    m_subflowCreated; //!< connection created callback
-
-// , const Address &, bool master
-//  Callback<void, Ptr<MpTcpSubflow> >    m_subflowConnectionSucceeded; //!< connection created callback
-
-    //!
-    TypeId m_subflowTypeId;
-    TypeId m_schedulerTypeId;
+  Callback<bool, Ptr<Socket>, Address, uint8_t> m_onRemoteAddAddr;  //!< return true to create a subflow
+  //  Callback<bool, Ptr<Socket>, Address, uint8_t > m_onNewLocalIp;  //!< return true to create a subflow
+  Callback<void, uint8_t> m_onAddrDeletion;    // return true to create a subflow
+  
+  // , const Address &, bool master
+  //  Callback<void, Ptr<MpTcpSubflow> >    m_subflowConnectionSucceeded; //!< connection created callback
+  
+  // TODO rename since will track local too.
+  Ptr<MpTcpPathIdManager> m_remotePathIdManager;  //!< Keep track of advertised ADDR id advertised by remote endhost
+  
+  //SubflowList m_subflows[Maximum];
+  
+  SubflowList m_subflows;
+  SubflowList m_activeSubflows; //Keep track of all the established subflows
+  
+  Ptr<MpTcpSubflow> m_master;
+  
+  // Rx and Tx buffer management
+  Ptr<TcpRxBuffer64>        m_rxBuffer;       //!< Rx buffer (reordering buffer)
+  Ptr<TcpTxBuffer64>        m_txBuffer;       //!< Tx buffer
+  
+  
+  Ptr<MpTcpScheduler> m_scheduler;  //!<
+  
+  MpTcpMetaSocketState m_state;
+  
+  uint64_t m_localKey;    //!< Store local host token, generated during the 3-way handshake
+  uint32_t m_localToken;  //!< Generated from key
+  
+  uint64_t m_peerKey; //!< Store remote host token
+  uint32_t m_peerToken;
+  
+  bool     m_doChecksum;  //!< Compute the checksum. Negociated during 3WHS. Unused
+  bool     m_receivedDSS;  //!< True if we received at least one DSS
+  bool     m_connected;
+  
+  //!
+  TypeId m_subflowTypeId;
+  TypeId m_schedulerTypeId;
+  
+  TracedValue<uint32_t>   m_rWnd;        //!< Receiver window (RCV.WND in RFC793)
+  uint32_t                m_initialCWnd;     //!< Initial cWnd value
+  uint32_t                m_initialSsThresh; //!< Initial Slow Start Threshold value
+  uint32_t                m_segmentSize;     //!< Segment size
+  SequenceNumber32        m_lastAckedSeq;    //!< Last sequence ACKed
+  TracedValue<SequenceNumber64> m_highTxMark; //!< Highest seqno ever sent, regardless of ReTx
+  TracedValue<SequenceNumber64> m_nextTxSequence; //!< Next seqnum to be sent (SND.NXT), ReTx pushes it back
+  mutable enum SocketErrno m_errno;         //!< Socket error code
+  EventId m_sendPendingDataEvent; //!< micro-delay event to send pending data
+  EventId           m_retxEvent;       //!< Retransmission event
+  EventId           m_lastAckEvent;
+  EventId           m_timeWaitEvent;
+  
+  //Inherited from TcpSocket, setting the TCP parameters
+  
+  virtual void NotifyRcvBufferChange (uint32_t oldSize, uint32_t newSize) override;
+  
+  virtual void SetSndBufSize (uint32_t size) override;
+  virtual uint32_t GetSndBufSize (void) const override;
+  virtual void SetRcvBufSize (uint32_t size) override;
+  virtual uint32_t GetRcvBufSize (void) const override;
+  virtual void SetSegSize (uint32_t size) override;
+  virtual uint32_t GetSegSize (void) const override;
+  virtual void SetInitialSSThresh (uint32_t threshold) override;
+  virtual uint32_t GetInitialSSThresh (void) const override;
+  virtual void SetInitialCwnd (uint32_t cwnd) override;
+  virtual uint32_t GetInitialCwnd (void) const override;
+  
+  virtual void SetMptcpEnabled (bool flag) override;
+  
 };
-
+  
 }   //namespace ns3
 
 #endif /* MP_TCP_SOCKET_BASE_H */

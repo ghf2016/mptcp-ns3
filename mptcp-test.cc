@@ -173,10 +173,10 @@ int main(int argc, char* argv[])
   Config::SetDefault ("ns3::TcpSocket::RcvBufSize", UintegerValue(1<<30));
   
   //Disable the timestamp option
-  Config::SetDefault("ns3::TcpSocketBase::Timestamp", BooleanValue(false));
+  Config::SetDefault("ns3::TcpSocketImpl::Timestamp", BooleanValue(false));
   
   //Set the mptcp option
-  Config::SetDefault("ns3::TcpSocketBase::EnableMpTcp", BooleanValue(true));
+  Config::SetDefault("ns3::TcpSocketImpl::EnableMpTcp", BooleanValue(true));
   
   //Set the initial congestion window to be larger than duplicate ack threshold
   Config::SetDefault("ns3::TcpSocket::InitialCwnd", UintegerValue(4));
@@ -241,7 +241,7 @@ int main(int argc, char* argv[])
   Address remoteAddress(InetSocketAddress(clientFacingInterfaces.GetAddress(0), portNum));
   
   //Install the bulk send
-  OnOffHelper onOff("ns3::TcpSocketFactory", remoteAddress);
+  OnOffHelper onOff("ns3::MpTcpSocketFactory", remoteAddress);
   
   //BulkSendHelper bulkSend("ns3::TcpSocketFactory", remoteAddress);
   
@@ -252,7 +252,7 @@ int main(int argc, char* argv[])
   //bulkSend.Install(server);
   onOff.Install(server);
   
-  PacketSinkHelper packetSink("ns3::TcpSocketFactory", remoteAddress);
+  PacketSinkHelper packetSink("ns3::MpTcpSocketFactory", remoteAddress);
   packetSink.Install(client);
   
   //Create an output directory

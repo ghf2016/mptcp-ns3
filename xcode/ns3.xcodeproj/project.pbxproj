@@ -248,7 +248,6 @@
 		ED61C62F199CE9AA00839C45 /* unix-fd-reader.h in Headers */ = {isa = PBXBuildFile; fileRef = ED61BBB0199CD60F00839C45 /* unix-fd-reader.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED61C630199CE9B000839C45 /* unix-fd-reader.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED61BBAF199CD60F00839C45 /* unix-fd-reader.cc */; };
 		ED61C631199CE9B800839C45 /* unix-system-condition.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED61BBB1199CD60F00839C45 /* unix-system-condition.cc */; };
-		ED6E22061C5D23C400028B56 /* tcp-close-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED6E22051C5D23C400028B56 /* tcp-close-test.cc */; };
 		ED6E22071C5D23D100028B56 /* libinternet.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CFDD16051D0900ECD480 /* libinternet.dylib */; };
 		ED6E22081C5D244300028B56 /* tcp-error-model.h in Headers */ = {isa = PBXBuildFile; fileRef = ED6E21E71C5D136F00028B56 /* tcp-error-model.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED6E22091C5D244400028B56 /* tcp-general-test.h in Headers */ = {isa = PBXBuildFile; fileRef = ED6E21EB1C5D136F00028B56 /* tcp-general-test.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -256,12 +255,11 @@
 		ED6E220F1C5D249600028B56 /* libnetwork.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CEC71605138600ECD480 /* libnetwork.dylib */; };
 		ED6E22101C5D24B100028B56 /* tcp-general-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED6E21EA1C5D136F00028B56 /* tcp-general-test.cc */; };
 		ED6E22111C5D24B800028B56 /* tcp-error-model.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED6E21E61C5D136F00028B56 /* tcp-error-model.cc */; };
-		ED6E22131C5D619400028B56 /* tcp-handshake-ack-drop-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED6E22121C5D619400028B56 /* tcp-handshake-ack-drop-test.cc */; };
 		ED712CAF197802890074513E /* libstats.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7D1D5160523BF00ECD480 /* libstats.dylib */; };
 		ED7141381D3D29E900BAEE7A /* tcp-socket-wrapper.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED7141361D3D29E900BAEE7A /* tcp-socket-wrapper.cc */; };
 		ED7141391D3D29E900BAEE7A /* tcp-socket-wrapper.h in Headers */ = {isa = PBXBuildFile; fileRef = ED7141371D3D29E900BAEE7A /* tcp-socket-wrapper.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED71413E1D3E955900BAEE7A /* mptcp-meta-socket.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED71413C1D3E955900BAEE7A /* mptcp-meta-socket.cc */; };
-		ED71413F1D3E955900BAEE7A /* mptcp-meta-socket.h in Headers */ = {isa = PBXBuildFile; fileRef = ED71413D1D3E955900BAEE7A /* mptcp-meta-socket.h */; };
+		ED71413F1D3E955900BAEE7A /* mptcp-meta-socket.h in Headers */ = {isa = PBXBuildFile; fileRef = ED71413D1D3E955900BAEE7A /* mptcp-meta-socket.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED77A9F31BFF9266001E1B26 /* build-profile.h in Headers */ = {isa = PBXBuildFile; fileRef = ED77A9F21BFF9266001E1B26 /* build-profile.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED77A9FA1BFF92FE001E1B26 /* tcp-congestion-ops.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED77A9F41BFF92FE001E1B26 /* tcp-congestion-ops.cc */; };
 		ED77A9FB1BFF92FE001E1B26 /* tcp-congestion-ops.h in Headers */ = {isa = PBXBuildFile; fileRef = ED77A9F51BFF92FE001E1B26 /* tcp-congestion-ops.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -675,6 +673,14 @@
 		ED8883761CED105500EDA1E9 /* libnetwork.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CEC71605138600ECD480 /* libnetwork.dylib */; };
 		ED8883771CED105500EDA1E9 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
 		ED91DA781D217C3700A69097 /* mptcp-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED91DA771D217C1700A69097 /* mptcp-test.cc */; };
+		EDC1D83F1D58B07200DD1D64 /* tcp-parameters.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDC1D83B1D58B07200DD1D64 /* tcp-parameters.cc */; };
+		EDC1D8401D58B07200DD1D64 /* tcp-parameters.h in Headers */ = {isa = PBXBuildFile; fileRef = EDC1D83C1D58B07200DD1D64 /* tcp-parameters.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		EDC1D8411D58B07200DD1D64 /* tcp-socket-impl.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDC1D83D1D58B07200DD1D64 /* tcp-socket-impl.cc */; };
+		EDC1D8421D58B07200DD1D64 /* tcp-socket-impl.h in Headers */ = {isa = PBXBuildFile; fileRef = EDC1D83E1D58B07200DD1D64 /* tcp-socket-impl.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		EDC1D8451D58C01300DD1D64 /* tcp-socket-state.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDC1D8431D58C01300DD1D64 /* tcp-socket-state.cc */; };
+		EDC1D8461D58C01300DD1D64 /* tcp-socket-state.h in Headers */ = {isa = PBXBuildFile; fileRef = EDC1D8441D58C01300DD1D64 /* tcp-socket-state.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		EDC1D8491D58F11C00DD1D64 /* mptcp-socket-factory.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDC1D8471D58F11C00DD1D64 /* mptcp-socket-factory.cc */; };
+		EDC1D84A1D58F11C00DD1D64 /* mptcp-socket-factory.h in Headers */ = {isa = PBXBuildFile; fileRef = EDC1D8481D58F11C00DD1D64 /* mptcp-socket-factory.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDC7CECD1605139B00ECD480 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
 		EDC7CF3B1605175100ECD480 /* libnetwork.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CEC71605138600ECD480 /* libnetwork.dylib */; };
 		EDC7CF501605184F00ECD480 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
@@ -696,7 +702,6 @@
 		EDC7D1F4160525E500ECD480 /* libinternet.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CFDD16051D0900ECD480 /* libinternet.dylib */; };
 		EDDBC1E21666E31800C3DB41 /* libinternet.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CFDD16051D0900ECD480 /* libinternet.dylib */; };
 		EDE066C61605042200E183C8 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
-		EDE46A1F1C7609A400BE8119 /* tcp-bidirectional-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDE46A1E1C7609A400BE8119 /* tcp-bidirectional-test.cc */; };
 		EDEB0E311D108CEB00F0C233 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = EDEB0E301D108CEB00F0C233 /* libsqlite3.tbd */; };
 		EDEB0E6B1D10A05B00F0C233 /* mptcp-cc-coupled.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E4F1D10A05B00F0C233 /* mptcp-cc-coupled.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E711D10A05B00F0C233 /* mptcp-crypto.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E551D10A05B00F0C233 /* mptcp-crypto.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -718,7 +723,6 @@
 		EDEB0E8F1D10A0E800F0C233 /* mptcp-scheduler-round-robin.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E601D10A05B00F0C233 /* mptcp-scheduler-round-robin.cc */; };
 		EDEB0E911D10A0E800F0C233 /* mptcp-subflow.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E661D10A05B00F0C233 /* mptcp-subflow.cc */; };
 		EDEB0E921D10A0E800F0C233 /* tcp-option-mptcp.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E681D10A05B00F0C233 /* tcp-option-mptcp.cc */; };
-		EDEB0E931D11A17700F0C233 /* mptcp-scheduler-fastest-rtt.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E5E1D10A05B00F0C233 /* mptcp-scheduler-fastest-rtt.cc */; };
 		EDFCDD6C16DE60AC00C3E127 /* libinternet.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CFDD16051D0900ECD480 /* libinternet.dylib */; };
 /* End PBXBuildFile section */
 
@@ -3931,8 +3935,6 @@
 		ED6E21F71C5D136F00028B56 /* tcp-zero-window-test.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-zero-window-test.cc"; sourceTree = "<group>"; };
 		ED6E21FC1C5D22F300028B56 /* tcp-test-close */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "tcp-test-close"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED6E21FE1C5D22F300028B56 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
-		ED6E22051C5D23C400028B56 /* tcp-close-test.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-close-test.cc"; sourceTree = "<group>"; };
-		ED6E22121C5D619400028B56 /* tcp-handshake-ack-drop-test.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-handshake-ack-drop-test.cc"; sourceTree = "<group>"; };
 		ED7141361D3D29E900BAEE7A /* tcp-socket-wrapper.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-socket-wrapper.cc"; sourceTree = "<group>"; };
 		ED7141371D3D29E900BAEE7A /* tcp-socket-wrapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "tcp-socket-wrapper.h"; sourceTree = "<group>"; };
 		ED71413C1D3E955900BAEE7A /* mptcp-meta-socket.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "mptcp-meta-socket.cc"; sourceTree = "<group>"; };
@@ -3972,6 +3974,14 @@
 		ED7C6B37199D00A5009165B6 /* core-module.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "core-module.h"; path = "../build/ns3/core-module.h"; sourceTree = "<group>"; };
 		ED88837D1CED105500EDA1E9 /* background */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = background; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED91DA771D217C1700A69097 /* mptcp-test.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = "mptcp-test.cc"; path = "../mptcp-test.cc"; sourceTree = "<group>"; };
+		EDC1D83B1D58B07200DD1D64 /* tcp-parameters.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-parameters.cc"; sourceTree = "<group>"; };
+		EDC1D83C1D58B07200DD1D64 /* tcp-parameters.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "tcp-parameters.h"; sourceTree = "<group>"; };
+		EDC1D83D1D58B07200DD1D64 /* tcp-socket-impl.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-socket-impl.cc"; sourceTree = "<group>"; };
+		EDC1D83E1D58B07200DD1D64 /* tcp-socket-impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "tcp-socket-impl.h"; sourceTree = "<group>"; };
+		EDC1D8431D58C01300DD1D64 /* tcp-socket-state.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-socket-state.cc"; sourceTree = "<group>"; };
+		EDC1D8441D58C01300DD1D64 /* tcp-socket-state.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "tcp-socket-state.h"; sourceTree = "<group>"; };
+		EDC1D8471D58F11C00DD1D64 /* mptcp-socket-factory.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "mptcp-socket-factory.cc"; sourceTree = "<group>"; };
+		EDC1D8481D58F11C00DD1D64 /* mptcp-socket-factory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "mptcp-socket-factory.h"; sourceTree = "<group>"; };
 		EDC7CEC71605138600ECD480 /* libnetwork.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libnetwork.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDC7CF4A1605183B00ECD480 /* libpropagation.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libpropagation.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDC7CF69160518E300ECD480 /* libmobility.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libmobility.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -4009,10 +4019,8 @@
 		EDD00B251A1E36460099F4AD /* web-module.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "web-module.h"; path = "../build/ns3/web-module.h"; sourceTree = "<group>"; };
 		EDE065F01604E5E700E183C8 /* libcore.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libcore.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDE066851605039300E183C8 /* libwifi.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libwifi.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		EDE46A1B1C76094800BE8119 /* codel-queue-test-suite.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "codel-queue-test-suite.cc"; sourceTree = "<group>"; };
 		EDE46A1C1C76094800BE8119 /* ipv4-global-routing-test-suite.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "ipv4-global-routing-test-suite.cc"; sourceTree = "<group>"; };
 		EDE46A1D1C76094800BE8119 /* ipv4-static-routing-test-suite.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "ipv4-static-routing-test-suite.cc"; sourceTree = "<group>"; };
-		EDE46A1E1C7609A400BE8119 /* tcp-bidirectional-test.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-bidirectional-test.cc"; sourceTree = "<group>"; };
 		EDEB0E301D108CEB00F0C233 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		EDEB0E4E1D10A05B00F0C233 /* mptcp-cc-coupled.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "mptcp-cc-coupled.cc"; sourceTree = "<group>"; };
 		EDEB0E4F1D10A05B00F0C233 /* mptcp-cc-coupled.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "mptcp-cc-coupled.h"; sourceTree = "<group>"; };
@@ -6136,6 +6144,8 @@
 				EDEB0E601D10A05B00F0C233 /* mptcp-scheduler-round-robin.cc */,
 				EDEB0E611D10A05B00F0C233 /* mptcp-scheduler-round-robin.h */,
 				EDEB0E621D10A05B00F0C233 /* mptcp-scheduler.h */,
+				EDC1D8471D58F11C00DD1D64 /* mptcp-socket-factory.cc */,
+				EDC1D8481D58F11C00DD1D64 /* mptcp-socket-factory.h */,
 				EDEB0E651D10A05B00F0C233 /* mptcp-socket.h */,
 				EDEB0E661D10A05B00F0C233 /* mptcp-subflow.cc */,
 				EDEB0E671D10A05B00F0C233 /* mptcp-subflow.h */,
@@ -6187,6 +6197,8 @@
 				ED4B0EA019F0234400C2232D /* tcp-option-winscale.h */,
 				ED4B0EA119F0234400C2232D /* tcp-option.cc */,
 				ED4B0EA219F0234400C2232D /* tcp-option.h */,
+				EDC1D83B1D58B07200DD1D64 /* tcp-parameters.cc */,
+				EDC1D83C1D58B07200DD1D64 /* tcp-parameters.h */,
 				ED61BDA0199CD61000839C45 /* tcp-rx-buffer.cc */,
 				ED61BDA1199CD61000839C45 /* tcp-rx-buffer.h */,
 				ED2E637D1D02DBA40083CCB7 /* tcp-scalable.cc */,
@@ -6197,6 +6209,10 @@
 				ED61BDA5199CD61000839C45 /* tcp-socket-factory-impl.h */,
 				ED61BDA6199CD61000839C45 /* tcp-socket-factory.cc */,
 				ED61BDA7199CD61000839C45 /* tcp-socket-factory.h */,
+				EDC1D83D1D58B07200DD1D64 /* tcp-socket-impl.cc */,
+				EDC1D83E1D58B07200DD1D64 /* tcp-socket-impl.h */,
+				EDC1D8431D58C01300DD1D64 /* tcp-socket-state.cc */,
+				EDC1D8441D58C01300DD1D64 /* tcp-socket-state.h */,
 				ED7141361D3D29E900BAEE7A /* tcp-socket-wrapper.cc */,
 				ED7141371D3D29E900BAEE7A /* tcp-socket-wrapper.h */,
 				ED61BDA8199CD61000839C45 /* tcp-socket.cc */,
@@ -6230,9 +6246,6 @@
 		ED61BDBC199CD61000839C45 /* test */ = {
 			isa = PBXGroup;
 			children = (
-				ED6E22051C5D23C400028B56 /* tcp-close-test.cc */,
-				ED6E22121C5D619400028B56 /* tcp-handshake-ack-drop-test.cc */,
-				EDE46A1E1C7609A400BE8119 /* tcp-bidirectional-test.cc */,
 				ED6E21E21C5D136F00028B56 /* tcp-cong-avoid-test.cc */,
 				ED6E21E31C5D136F00028B56 /* tcp-cong-avoid-test.h */,
 				ED6E21E41C5D136F00028B56 /* tcp-datasentcb-test.cc */,
@@ -6275,7 +6288,6 @@
 				ED61BDCE199CD61000839C45 /* ipv6-forwarding-test.cc */,
 				ED61BDCF199CD61000839C45 /* ipv6-fragmentation-test.cc */,
 				ED61BDD0199CD61000839C45 /* ipv6-list-routing-test-suite.cc */,
-				EDE46A1B1C76094800BE8119 /* codel-queue-test-suite.cc */,
 				EDE46A1C1C76094800BE8119 /* ipv4-global-routing-test-suite.cc */,
 				EDE46A1D1C76094800BE8119 /* ipv4-static-routing-test-suite.cc */,
 				ED61BDD1199CD61000839C45 /* ipv6-packet-info-tag-test-suite.cc */,
@@ -9963,6 +9975,7 @@
 				ED7C6C96199D29CC009165B6 /* ipv6-extension-demux.h in Headers */,
 				ED7C6C97199D29CC009165B6 /* ipv6-extension-header.h in Headers */,
 				ED05A6891C986F2A0008E602 /* ipv4-queue-disc-item.h in Headers */,
+				EDC1D84A1D58F11C00DD1D64 /* mptcp-socket-factory.h in Headers */,
 				ED7C6C9A199D29CC009165B6 /* ipv6-option-header.h in Headers */,
 				ED7C6C8E199D29CB009165B6 /* arp-l3-protocol.h in Headers */,
 				ED7C6C9E199D29CD009165B6 /* udp-l4-protocol.h in Headers */,
@@ -9972,6 +9985,7 @@
 				ED7C6C73199D2809009165B6 /* arp-header.h in Headers */,
 				ED7C6C72199D2809009165B6 /* arp-cache.h in Headers */,
 				ED05A6981C9871D20008E602 /* rip-helper.h in Headers */,
+				EDC1D8401D58B07200DD1D64 /* tcp-parameters.h in Headers */,
 				ED7C6C74199D280A009165B6 /* icmpv6-l4-protocol.h in Headers */,
 				ED7141391D3D29E900BAEE7A /* tcp-socket-wrapper.h in Headers */,
 				ED7C6C81199D280A009165B6 /* ipv6-interface.h in Headers */,
@@ -10024,6 +10038,7 @@
 				ED7C6C6C199D2632009165B6 /* ipv4-global-routing.h in Headers */,
 				ED7C6C5D199D2631009165B6 /* ipv4-global-routing-helper.h in Headers */,
 				ED7C6C5A199D2631009165B6 /* internet-stack-helper.h in Headers */,
+				EDC1D8421D58B07200DD1D64 /* tcp-socket-impl.h in Headers */,
 				ED7C6C5B199D2631009165B6 /* internet-trace-helper.h in Headers */,
 				ED7C6C5C199D2631009165B6 /* ipv4-address-helper.h in Headers */,
 				ED7C6C5E199D2631009165B6 /* ipv4-interface-container.h in Headers */,
@@ -10037,6 +10052,7 @@
 				ED7C6C59199D24B2009165B6 /* tcp-westwood.h in Headers */,
 				ED2E63841D02DBA40083CCB7 /* tcp-bic.h in Headers */,
 				ED7C6C56199D24B2009165B6 /* tcp-socket-base.h in Headers */,
+				EDC1D8461D58C01300DD1D64 /* tcp-socket-state.h in Headers */,
 				ED7C6C55199D24B2009165B6 /* tcp-rx-buffer.h in Headers */,
 				ED05A6871C986F2A0008E602 /* ipv4-packet-filter.h in Headers */,
 				ED71413F1D3E955900BAEE7A /* mptcp-meta-socket.h in Headers */,
@@ -10613,11 +10629,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EDE46A1F1C7609A400BE8119 /* tcp-bidirectional-test.cc in Sources */,
 				ED6E22111C5D24B800028B56 /* tcp-error-model.cc in Sources */,
 				ED6E22101C5D24B100028B56 /* tcp-general-test.cc in Sources */,
-				ED6E22131C5D619400028B56 /* tcp-handshake-ack-drop-test.cc in Sources */,
-				ED6E22061C5D23C400028B56 /* tcp-close-test.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -10740,6 +10753,7 @@
 				ED7C6C2B199D2257009165B6 /* ip-l4-protocol.cc in Sources */,
 				ED7C6C46199D2257009165B6 /* udp-header.cc in Sources */,
 				ED7C6C43199D2257009165B6 /* tcp-header.cc in Sources */,
+				EDC1D8491D58F11C00DD1D64 /* mptcp-socket-factory.cc in Sources */,
 				ED7C6C2E199D2257009165B6 /* ipv4-interface.cc in Sources */,
 				ED7C6C2F199D2257009165B6 /* ipv4-l3-protocol.cc in Sources */,
 				ED2E63831D02DBA40083CCB7 /* tcp-bic.cc in Sources */,
@@ -10749,6 +10763,7 @@
 				ED7C6C26199D2257009165B6 /* arp-header.cc in Sources */,
 				ED7C6C25199D2257009165B6 /* arp-cache.cc in Sources */,
 				ED7C6C27199D2257009165B6 /* arp-l3-protocol.cc in Sources */,
+				EDC1D8451D58C01300DD1D64 /* tcp-socket-state.cc in Sources */,
 				ED7C6C49199D2257009165B6 /* udp-socket-impl.cc in Sources */,
 				ED7C6C2C199D2257009165B6 /* ipv4-end-point-demux.cc in Sources */,
 				ED71413E1D3E955900BAEE7A /* mptcp-meta-socket.cc in Sources */,
@@ -10769,7 +10784,6 @@
 				ED7C6C29199D2257009165B6 /* icmpv6-header.cc in Sources */,
 				ED77A9FA1BFF92FE001E1B26 /* tcp-congestion-ops.cc in Sources */,
 				ED7C6C39199D2257009165B6 /* ipv6-l3-protocol.cc in Sources */,
-				EDEB0E931D11A17700F0C233 /* mptcp-scheduler-fastest-rtt.cc in Sources */,
 				ED7C6C34199D2257009165B6 /* ipv6-end-point.cc in Sources */,
 				ED7C6C33199D2257009165B6 /* ipv6-end-point-demux.cc in Sources */,
 				ED7C6C3D199D2257009165B6 /* ipv6-raw-socket-factory-impl.cc in Sources */,
@@ -10783,6 +10797,7 @@
 				ED7C6C3C199D2257009165B6 /* ipv6-option.cc in Sources */,
 				ED77A9FE1BFF92FE001E1B26 /* tcp-hybla.cc in Sources */,
 				ED7C6C3B199D2257009165B6 /* ipv6-option-header.cc in Sources */,
+				EDC1D83F1D58B07200DD1D64 /* tcp-parameters.cc in Sources */,
 				ED7C6C3A199D2257009165B6 /* ipv6-option-demux.cc in Sources */,
 				ED7C6C2A199D2257009165B6 /* icmpv6-l4-protocol.cc in Sources */,
 				ED7C6C1D199D201B009165B6 /* tcp-socket-base.cc in Sources */,
@@ -10852,6 +10867,7 @@
 				ED7C6C07199D1E90009165B6 /* ipv4-routing-helper.cc in Sources */,
 				ED7C6BF6199D1CC2009165B6 /* ipv6-address-helper.cc in Sources */,
 				ED7C6BF7199D1CC2009165B6 /* ipv6-interface-container.cc in Sources */,
+				EDC1D8411D58B07200DD1D64 /* tcp-socket-impl.cc in Sources */,
 				ED7C6BF9199D1D19009165B6 /* ipv6-routing-helper.cc in Sources */,
 				ED7C6BEB199D1998009165B6 /* ipv6-address-generator.cc in Sources */,
 				ED7C6BEA199D1998009165B6 /* ipv4-packet-probe.cc in Sources */,

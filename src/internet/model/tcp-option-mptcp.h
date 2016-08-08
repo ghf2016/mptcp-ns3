@@ -585,9 +585,8 @@ public:
 //  MpTcpMapping GetMapping(void) const;
   virtual void GetMapping (uint64_t& dsn, uint32_t& ssn, uint16_t& length) const;
   
-  
-  virtual uint64_t GetDataSequenceNumber () const;
-  virtual uint32_t GetSubflowSequenceNumber () const;
+  virtual SequenceNumber64 GetDataSequenceNumber () const;
+  virtual SequenceNumber32 GetSubflowSequenceNumber () const;
   virtual uint16_t GetMappingLength () const;
 
   /**
@@ -595,7 +594,9 @@ public:
    * \param trunc_to_32bits Set to true to send a 32bit DSN
    * \warn Mapping can be set only once, otherwise it will crash ns3
    */
-  virtual void SetMapping (uint64_t headDsn, uint32_t headSsn, uint16_t length, bool enable_dfin);
+  virtual void SetMapping (const SequenceNumber64& headDsn,
+                           const SequenceNumber32& headSsn,
+                           uint16_t length, bool enable_dfin);
 
   /**
    * \brief A DSS length depends on what content it embeds. This is defined by the flags.
@@ -611,14 +612,14 @@ public:
   * \param dack Sequence number of the dataack
   * \param send_as_32bits Decides if the DACK should be sent as a 32 bits number
   */
-  virtual void SetDataAck (const uint64_t& dack, const bool& send_as_32bits = true);
+  virtual void SetDataAck (uint64_t dack, bool send_as_32bits = true);
 
   /**
   * \brief Get data ack value
   *
   * \warning  check the flags to know if the returned value is a 32 or 64 bits DSN
   */
-  virtual uint64_t GetDataAck (void) const;
+  virtual SequenceNumber64 GetDataAck (void) const;
 
   /**
    * \brief Unimplemented

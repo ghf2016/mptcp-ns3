@@ -32,30 +32,23 @@ NS_LOG_COMPONENT_DEFINE("MpTcpMapping");
 
 namespace ns3
 {
-
-/**
-* \brief sorted on DSNs
-*/
-typedef std::set<MpTcpMapping> MappingList;
-//typedef std::map<SequenceNumber32, MpTcpMapping> MappingList;
-
-
+  
 MpTcpMapping::MpTcpMapping() :
-  m_dataSequenceNumber(0),
-  m_subflowSequenceNumber(0),
-  m_dataLevelLength(0)
+m_dataSequenceNumber(0),
+m_subflowSequenceNumber(0),
+m_dataLevelLength(0)
 {
   NS_LOG_FUNCTION(this);
 }
-  
+
 MpTcpMapping::MpTcpMapping (SequenceNumber64 dataSequence,
-                           SequenceNumber32 subflowSequence,
+                            SequenceNumber32 subflowSequence,
                             uint16_t length) :
   m_dataSequenceNumber(dataSequence),
   m_subflowSequenceNumber(subflowSequence),
   m_dataLevelLength(length)
 {
-   NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION(this);
 }
 
 MpTcpMapping::~MpTcpMapping(void)
@@ -71,29 +64,26 @@ MpTcpMapping::SetMappingSize(uint16_t const& length)
   m_dataLevelLength = length;
 }
 
-bool
-MpTcpMapping::TranslateSSNToDSN(const SequenceNumber32& ssn, SequenceNumber64& dsn) const
+SequenceNumber64
+MpTcpMapping::GetDSNFromSSN(const SequenceNumber32& ssn) const
 {
-  if(IsSSNInRange(ssn))
-  {
-//      dsn =
-//    NS_FATAL_ERROR("TODO");
-  // TODO check for seq wrapping ? PAWS
-    dsn = SequenceNumber64(ssn - HeadSSN()) + HeadDSN();
-    return true;
-  }
+  NS_ASSERT(IsSSNInRange(ssn));
+  return SequenceNumber64(ssn - HeadSSN()) + HeadDSN();
+}
 
-  return false;
+SequenceNumber32 MpTcpMapping::GetSSNFromDSN (const SequenceNumber64& dsn) const
+{
+  NS_ASSERT(IsDSNInRange(dsn));
+  uint32_t length = uint32_t(dsn - HeadDSN());
+  return SequenceNumber32(length) + HeadSSN();
 }
 
 
 std::ostream&
 operator<<(std::ostream& os, const MpTcpMapping& mapping)
 {
-  //
   os << "DSN [" << mapping.HeadDSN() << "-" << mapping.TailDSN ()
-  //of size [" << mapping.GetLength() <<"] from DSN [" << mapping.HeadDSN()
-    << "] mapped to SSN [" <<  mapping.HeadSSN() << "-" <<  mapping.TailSSN() << "]";
+  << "] mapped to SSN [" <<  mapping.HeadSSN() << "-" <<  mapping.TailSSN() << "]";
   return os;
 }
 
@@ -112,32 +102,20 @@ MpTcpMapping::SetHeadSSN( SequenceNumber32 const& headSSN)
   m_subflowSequenceNumber = headSSN;
 }
 
-// n'est jamais utilisé en fait
-//bool
-//MpTcpMapping::Intersect(const MpTcpMapping& mapping) const
-//{
-//  //!
-//  return( IsSSNInRange( mapping.HeadSSN()) || IsSSNInRange( mapping.TailSSN())
-//         || IsDSNInRange( mapping.HeadDSN()) || IsDSNInRange( mapping.TailDSN()) );
-//}
-
 bool
 MpTcpMapping::operator==(const MpTcpMapping& mapping) const
 {
   //!
-  return (
-    GetLength() == mapping.GetLength()
-    && HeadDSN() == mapping.HeadDSN()
-    && HeadSSN() == mapping.HeadSSN()
-//    && GetLength()  == GetLength()
-    );
+  return (GetLength() == mapping.GetLength()
+          && HeadDSN() == mapping.HeadDSN()
+          && HeadSSN() == mapping.HeadSSN());
 }
 
 bool
 MpTcpMapping::operator!=( const MpTcpMapping& mapping) const
 {
   //!
-  return !( *this == mapping);
+  return !(*this == mapping);
 }
 
 
@@ -157,7 +135,6 @@ MpTcpMapping::HeadSSN() const
 uint16_t
 MpTcpMapping::GetLength() const
 {
-//  NS_LOG_FUNCTION(this);
   return m_dataLevelLength;
 }
 
@@ -177,8 +154,6 @@ MpTcpMapping::TailSSN(void) const
 bool
 MpTcpMapping::operator<(MpTcpMapping const& m) const
 {
-
-//  return (HeadDSN() < m.HeadDSN());
   return (HeadSSN() < m.HeadSSN());
 }
 
@@ -186,28 +161,14 @@ MpTcpMapping::operator<(MpTcpMapping const& m) const
 bool
 MpTcpMapping::IsSSNInRange(SequenceNumber32 const& ssn) const
 {
-//  return OverlapRangeSSN(ssn,0);
   return ( (HeadSSN() <= ssn) && (TailSSN() >= ssn) );
 }
 
 bool
 MpTcpMapping::IsDSNInRange(SequenceNumber64 const& dsn) const
 {
-//  return OverlapRangeDSN(dsn,0);
   return ( (HeadDSN() <= dsn) && (TailDSN() >= dsn) );
 }
-
-
-//SequenceNumber32 subflowSeqNb
-//void
-//MpTcpMapping::Configure(SequenceNumber32  dataSeqNb, uint16_t mappingSize)
-////  m_dataSeqNumber(dataSeqNb),
-////  m_size(mappingSize)
-//{
-//  NS_LOG_LOGIC(this << "dsn [" << dataSeqNb << "], mappingSize [" << mappingSize << "]");
-//  m_dataSequenceNumber = dataSeqNb;
-//  m_dataLevelLength = mappingSize;
-//}
 
 
 bool
@@ -254,186 +215,157 @@ void
 MpTcpMappingContainer::Dump() const
 {
   NS_LOG_UNCOND("\n==== Dumping list of mappings ====");
-  for( MappingList::const_iterator it = m_mappings.begin(); it != m_mappings.end(); it++ )
+  for(MappingSet::const_iterator it = m_mappings.begin(); it != m_mappings.end(); it++ )
   {
-    NS_LOG_UNCOND( *it );
+    NS_LOG_UNCOND( **it );
   }
   NS_LOG_UNCOND("==== End of dump ====\n");
 }
 
-
-#if 0
-// This is wrong
-bool
-//MpTcpMappingContainer::FindOverlappingMapping(SequenceNumber32 headSSN, uint32_t len,  MpTcpMapping& ret) const
-MpTcpMappingContainer::FindOverlappingMapping(const MpTcpMapping& mapping, bool ignore_identical, MpTcpMapping& ret) const
+Ptr<MpTcpMapping> MpTcpMappingContainer::AddMapping(const SequenceNumber64& dsn,
+                                                    const SequenceNumber32& ssn,
+                                                    uint16_t length)
 {
-//  SequenceNumber32 tailSSN = headSSN + SequenceNumber32(len);
-  NS_LOG_DEBUG("Looking for a mapping that overlaps with " << mapping );
-  for( MappingList::const_iterator it = m_mappings.begin(); it != m_mappings.end(); it++ )
-  {
-    // Check if mappings overlap
-//    if(it->IsSSNInRange(mapping) && mapping != *it )
-  // Faux si le mapping est encore plus petit
-    if(it->OverlapRangeSSN(mapping.HeadSSN(), mapping.GetLength())
-      || it->OverlapRangeDSN(mapping.HeadDSN(), mapping.GetLength()) )
-    {
-      if( ignore_identical && (*it == mapping))
-      {
-        NS_LOG_DEBUG("Ignoring identical mapping " << *it);
-        continue;
-      }
-
-      // Intersect, il devrait continuer ptet qu'il y en a un autre
-      NS_LOG_WARN("Mapping " << mapping << " intersects with " << *it );
-      ret = *it;
-      return true;
-    }
-
+  NS_LOG_LOGIC("Adding mapping");
+  NS_ASSERT(length != 0);
+  
+  Ptr<MpTcpMapping> mapping = Create<MpTcpMapping>(dsn, ssn, length);
+  
+  pair<MappingSet::iterator,bool> res = m_mappings.insert(mapping);
+  
+  if(res.second){
+    m_reverseMappings.insert(mapping);
+    return mapping;
   }
-  return false;
-}
-
-
-
-#endif
-
-
-
-//! should return a boolean
-bool
-MpTcpMappingContainer::AddMapping(const MpTcpMapping& mapping)
-//MpTcpMappingContainer::AddMappingEnforceSSN(const MpTcpMapping& mapping)
-{
-  NS_LOG_LOGIC("Adding mapping " << mapping);
-
-  NS_ASSERT(mapping.GetLength() != 0);
-//  NS_ASSERT(mapping.HeadSSN() >= );
-
-//  MpTcpMapping temp;
-
-
-//  if(FindOverlappingMapping(mapping, true, temp))
-//  {
-//    NS_LOG_WARN("Mapping " << mapping << " conflicts with existing " << temp);
-//    Dump();
-//    return false;
-//  }
-
-
-//
-//  std::pair<MappingList::iterator,bool> res = m_mappings.insert( std::make_pair(mapping.HeadSSN(), mapping));
-  std::pair<MappingList::iterator,bool> res = m_mappings.insert( mapping);
-
-  return res.second;
+  else
+  {
+    return nullptr;
+  }
 }
 
 bool
 MpTcpMappingContainer::FirstUnmappedSSN(SequenceNumber32& ssn) const
 {
-//  NS_ASSERT(m_txBuffer);
+  //  NS_ASSERT(m_txBuffer);
   NS_LOG_FUNCTION_NOARGS();
   if(m_mappings.empty())
   {
-      return false;
+    return false;
   }
-  ssn = m_mappings.rbegin()->TailSSN() + 1;
+  Ptr<MpTcpMapping> mapping = *(m_mappings.rbegin());
+  ssn = mapping->TailSSN() + 1;
   return true;
 }
 
 
 bool
-MpTcpMappingContainer::DiscardMapping(const MpTcpMapping& mapping)
+MpTcpMappingContainer::DiscardMapping(Ptr<MpTcpMapping> mapping)
 {
   NS_LOG_LOGIC("discard mapping "<< mapping);
-//  MappingList::iterator it = l.begin(); it != l.end(); it++)
-//  std::size_type count = m_mappings.erase(mapping);
-//  return count != 0;
-//  return m_mappings.erase(HeadSSN());
-  return m_mappings.erase(mapping);
+  bool erased = m_mappings.erase(mapping);
+  m_reverseMappings.erase(mapping);
+  return erased;
 }
 
-#if 0
-int
-MpTcpMappingContainer::DiscardMappingsUpToSN(const SequenceNumber64& dsn,const SequenceNumber32& ssn)
+void MpTcpMappingContainer::DiscardMappingsInSSNRange(SequenceNumber32 ssn, uint32_t length)
 {
-  NS_LOG_LOGIC("Discarding mappings up with TailDSN < " << dsn << " AND TailSSN < " << ssn);
-
-  MappingList& l = m_mappings;
-  int erasedMappingCount = 0;
-  // TODO use reverse iterator and then clear from first found to the begin
-  for(MappingList::iterator it = l.begin(); it != l.end(); it++)
+  Ptr<MpTcpMapping> mapping = GetMappingForSSN(ssn);
+  SequenceNumber32 currentSsn = ssn;
+  uint32_t totalLength = 0;
+  while(mapping && (totalLength < length))
   {
-    // check that meta socket
-    if( it->TailDSN() < dsn && it->TailSSN() < ssn)
+    if((currentSsn + (length - totalLength)) < mapping->TailSSN())
     {
-      erasedMappingCount++;
-      l.erase(it);
-
+      break;
     }
+    DiscardMapping(mapping);
+    totalLength += mapping->GetLength();
+    currentSsn += mapping->GetLength();
+    mapping = GetMappingForSSN(currentSsn);
   }
-
-  return erasedMappingCount;
 }
-#endif
 
 bool
-MpTcpMappingContainer::GetMappingsStartingFromSSN(SequenceNumber32 ssn, std::set<MpTcpMapping>& missing)
+MpTcpMappingContainer::GetMappingsStartingFromSSN(SequenceNumber32 ssn, set<Ptr<MpTcpMapping>>& missing)
 {
-    NS_LOG_FUNCTION(this << ssn );
-    missing.clear();
-    //  std::copy(it,m_mappings.end(),);
-//    http://www.cplusplus.com/reference/algorithm/equal_range/
-    MpTcpMapping temp;
-    temp.SetHeadSSN(ssn);
-    MappingList::const_iterator it = std::lower_bound( m_mappings.begin(), m_mappings.end(), temp);
-
-    std::copy(it, m_mappings.end(), std::inserter(missing, missing.begin()));
-    return false;
+  NS_LOG_FUNCTION(this << ssn );
+  missing.clear();
+  //  std::copy(it,m_mappings.end(),);
+  //    http://www.cplusplus.com/reference/algorithm/equal_range/
+  
+  
+  CompareMappingSsn comp;
+  MappingSet::const_iterator it = lower_bound( m_mappings.begin(), m_mappings.end(), ssn, comp);
+  
+  copy(it, m_mappings.end(), inserter(missing, missing.begin()));
+  return false;
 }
 
-bool
-MpTcpMappingContainer::GetMappingForSSN(const SequenceNumber32& ssn, MpTcpMapping& mapping) const
+Ptr<MpTcpMapping>
+MpTcpMappingContainer::GetMappingForDSN(const SequenceNumber64& dsn) const
+{
+  NS_LOG_FUNCTION(dsn);
+  if(m_mappings.empty())
+  {
+    return nullptr;
+  }
+  
+  // Returns the first mapping that has a larger DSN
+  // upper_bound returns the greater (using binary search)
+  
+  Ptr<MpTcpMapping> temp = Create<MpTcpMapping>();
+  temp->SetHeadDSN(dsn);
+  
+  ReverseMappingSet::const_iterator it = m_reverseMappings.upper_bound(temp);
+  
+  if(it == m_reverseMappings.begin())
+  {
+    return nullptr;
+  }
+  
+  it--;
+  Ptr<MpTcpMapping> mapping = *it;
+  NS_LOG_DEBUG("Is ssn in " << mapping << " ?");
+  if (mapping->IsSSNInRange(dsn))
+  {
+    return mapping;
+  }
+  
+  return nullptr;
+}
+
+Ptr<MpTcpMapping>
+MpTcpMappingContainer::GetMappingForSSN(const SequenceNumber32& ssn) const
 {
   NS_LOG_FUNCTION(ssn);
   if(m_mappings.empty())
-    return false;
-
-  MpTcpMapping temp;
-  temp.SetHeadSSN(ssn);
-
-  // Returns the first that is not less
+  {
+    return nullptr;
+  }
+  
+  Ptr<MpTcpMapping> temp = Create<MpTcpMapping>();
+  temp->SetHeadSSN(ssn);
+  
+  // Returns the first mapping that has a larger SSN
   // upper_bound returns the greater
-  MappingList::const_iterator it = std::upper_bound( m_mappings.begin(), m_mappings.end(), temp);
-//  if(it == m_mappings.end())
-//  {
-//    it = m_mappings.begin();
-//    NS_LOG_DEBUG("could not find anything mapped to ssn" << ssn << "/" << temp.HeadSSN());
-////    return false;
-//  }
+  
+  MappingSet::const_iterator it = m_mappings.upper_bound(temp);
+  
+  if(it == m_mappings.begin())
+  {
+    return nullptr;
+  }
+  
   it--;
-  mapping = *it;
+  Ptr<MpTcpMapping> mapping = *it;
   NS_LOG_DEBUG("Is ssn in " << mapping << " ?");
-  return mapping.IsSSNInRange( ssn );
-
-
-//  if(Mapp)
-//  MappingList& l = m_mappings;
-//  for( MappingList::const_iterator it = l.begin(); it != l.end(); it++ )
-//  {
-//    // check seq nb is within the DSN range
-//    if (
-//      it->IsSSNInRange( ssn )
-//    )
-//    {
-//      mapping = *it;
-//      return true;
-//    }
-//  }
-
-//  return false;
+  if (mapping->IsSSNInRange(ssn))
+  {
+    return mapping;
+  }
+  
+  return nullptr;
+  
 }
-
-
-
+  
 } // namespace ns3
