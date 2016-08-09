@@ -22,6 +22,7 @@
 #include "ns3/socket.h"
 #include "ns3/assert.h"
 #include "tcp-congestion-ops.h"
+#include "mptcp-lia.h"
 #include "mptcp-meta-socket.h"
 
 namespace ns3 {
@@ -56,7 +57,7 @@ MpTcpSocketFactory::SetTcp (Ptr<TcpL4Protocol> tcp)
 Ptr<Socket>
 MpTcpSocketFactory::CreateSocket (void)
 {
-  return m_tcp->CreateSocket (TcpNewReno::GetTypeId (), MpTcpMetaSocket::GetTypeId());
+  return m_tcp->CreateSocket (MpTcpLia::GetTypeId (), MpTcpMetaSocket::GetTypeId());
 }
 
 void 

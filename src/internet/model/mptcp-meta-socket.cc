@@ -1484,6 +1484,43 @@ uint32_t MpTcpMetaSocket::GetRwndSize ()
   return m_rWnd;
 }
   
+//this would not accomodate with google option that proposes to add payload in
+// syn packets MPTCP
+/**
+ cf RFC:
+ 
+ To compute cwnd_total, it is an easy mistake to sum up cwnd_i across
+ all subflows: when a flow is in fast retransmit, its cwnd is
+ typically inflated and no longer represents the real congestion
+ window.  The correct behavior is to use the ssthresh (slow start
+ threshold) value for flows in fast retransmit when computing
+ cwnd_total.  To cater to connections that are app limited, the
+ computation should consider the minimum between flight_size_i and
+ cwnd_i, and flight_size_i and ssthresh_i, where appropriate.
+ 
+ TODO fix this to handle flight size
+ **/
+
+uint32_t MpTcpMetaSocket::GetTotalCwnd ()
+{
+  uint32_t totalCwnd = 0;
+  for (SubflowList::iterator it = m_activeSubflows.begin(); it != m_activeSubflows.end(); ++it)
+  {
+    Ptr<MpTcpSubflow> subflow = (*it);
+    // when in fast recovery, use SS threshold instead of cwnd
+    if(subflow->m_tcb->m_congState == TcpSocketState::CA_RECOVERY)
+    {
+      NS_LOG_DEBUG("Is in Fast recovery");
+      totalCwnd += subflow->m_tcb->m_ssThresh;
+    }
+    else
+    {
+      totalCwnd += subflow->m_tcb->m_cWnd;
+    }
+  }
+  return totalCwnd;
+}
+
 uint32_t
 MpTcpMetaSocket::AvailableWindow()
 {

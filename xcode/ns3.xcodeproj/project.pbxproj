@@ -107,6 +107,8 @@
 		ED4DB8551D0C803F00635C71 /* tcp-illinois.h in Headers */ = {isa = PBXBuildFile; fileRef = ED4DB8511D0C803F00635C71 /* tcp-illinois.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED4DB8561D0C803F00635C71 /* tcp-yeah.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED4DB8521D0C803F00635C71 /* tcp-yeah.cc */; };
 		ED4DB8571D0C803F00635C71 /* tcp-yeah.h in Headers */ = {isa = PBXBuildFile; fileRef = ED4DB8531D0C803F00635C71 /* tcp-yeah.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		ED52081C1D59632E00099E6A /* mptcp-lia.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E5A1D10A05B00F0C233 /* mptcp-lia.cc */; };
+		ED52081D1D59633100099E6A /* mptcp-lia.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E5B1D10A05B00F0C233 /* mptcp-lia.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED61C5A2199CD70700839C45 /* event-id.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED61BB46199CD60F00839C45 /* event-id.cc */; };
 		ED61C5A3199CD70D00839C45 /* event-id.h in Headers */ = {isa = PBXBuildFile; fileRef = ED61BB47199CD60F00839C45 /* event-id.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED61C5A4199CD71C00839C45 /* scheduler.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED61BB8A199CD60F00839C45 /* scheduler.cc */; };
@@ -715,7 +717,6 @@
 		EDEB0E831D10A05B00F0C233 /* mptcp-subflow.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E671D10A05B00F0C233 /* mptcp-subflow.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E851D10A05B00F0C233 /* tcp-option-mptcp.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E691D10A05B00F0C233 /* tcp-option-mptcp.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E861D10A0E800F0C233 /* mptcp-cc-coupled.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E4E1D10A05B00F0C233 /* mptcp-cc-coupled.cc */; };
-		EDEB0E881D10A0E800F0C233 /* mptcp-cc-uncoupled.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E521D10A05B00F0C233 /* mptcp-cc-uncoupled.cc */; };
 		EDEB0E891D10A0E800F0C233 /* mptcp-crypto.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E541D10A05B00F0C233 /* mptcp-crypto.cc */; };
 		EDEB0E8A1D10A0E800F0C233 /* mptcp-id-manager-impl.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E561D10A05B00F0C233 /* mptcp-id-manager-impl.cc */; };
 		EDEB0E8B1D10A0E800F0C233 /* mptcp-id-manager.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E581D10A05B00F0C233 /* mptcp-id-manager.cc */; };
@@ -4026,8 +4027,6 @@
 		EDEB0E4F1D10A05B00F0C233 /* mptcp-cc-coupled.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "mptcp-cc-coupled.h"; sourceTree = "<group>"; };
 		EDEB0E501D10A05B00F0C233 /* mptcp-cc-olia.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "mptcp-cc-olia.cc"; sourceTree = "<group>"; };
 		EDEB0E511D10A05B00F0C233 /* mptcp-cc-olia.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "mptcp-cc-olia.h"; sourceTree = "<group>"; };
-		EDEB0E521D10A05B00F0C233 /* mptcp-cc-uncoupled.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "mptcp-cc-uncoupled.cc"; sourceTree = "<group>"; };
-		EDEB0E531D10A05B00F0C233 /* mptcp-cc-uncoupled.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "mptcp-cc-uncoupled.h"; sourceTree = "<group>"; };
 		EDEB0E541D10A05B00F0C233 /* mptcp-crypto.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "mptcp-crypto.cc"; sourceTree = "<group>"; };
 		EDEB0E551D10A05B00F0C233 /* mptcp-crypto.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "mptcp-crypto.h"; sourceTree = "<group>"; };
 		EDEB0E561D10A05B00F0C233 /* mptcp-id-manager-impl.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "mptcp-id-manager-impl.cc"; sourceTree = "<group>"; };
@@ -6125,8 +6124,6 @@
 				EDEB0E4F1D10A05B00F0C233 /* mptcp-cc-coupled.h */,
 				EDEB0E501D10A05B00F0C233 /* mptcp-cc-olia.cc */,
 				EDEB0E511D10A05B00F0C233 /* mptcp-cc-olia.h */,
-				EDEB0E521D10A05B00F0C233 /* mptcp-cc-uncoupled.cc */,
-				EDEB0E531D10A05B00F0C233 /* mptcp-cc-uncoupled.h */,
 				EDEB0E541D10A05B00F0C233 /* mptcp-crypto.cc */,
 				EDEB0E551D10A05B00F0C233 /* mptcp-crypto.h */,
 				EDEB0E561D10A05B00F0C233 /* mptcp-id-manager-impl.cc */,
@@ -10022,6 +10019,7 @@
 				ED7C6C6E199D2632009165B6 /* ipv4-static-routing.h in Headers */,
 				ED7C6C6D199D2632009165B6 /* ipv4-routing-table-entry.h in Headers */,
 				ED7C6C71199D2632009165B6 /* ipv6-static-routing.h in Headers */,
+				ED52081D1D59633100099E6A /* mptcp-lia.h in Headers */,
 				ED05A68D1C986F2A0008E602 /* ipv6-queue-disc-item.h in Headers */,
 				ED7C6C70199D2632009165B6 /* ipv6-routing-table-entry.h in Headers */,
 				ED4DB8551D0C803F00635C71 /* tcp-illinois.h in Headers */,
@@ -10760,6 +10758,7 @@
 				ED7C6C2D199D2257009165B6 /* ipv4-end-point.cc in Sources */,
 				ED7C6C47199D2257009165B6 /* udp-l4-protocol.cc in Sources */,
 				ED7C6C44199D2257009165B6 /* tcp-l4-protocol.cc in Sources */,
+				ED52081C1D59632E00099E6A /* mptcp-lia.cc in Sources */,
 				ED7C6C26199D2257009165B6 /* arp-header.cc in Sources */,
 				ED7C6C25199D2257009165B6 /* arp-cache.cc in Sources */,
 				ED7C6C27199D2257009165B6 /* arp-l3-protocol.cc in Sources */,
@@ -10771,7 +10770,6 @@
 				ED7C6C45199D2257009165B6 /* tcp-socket-factory-impl.cc in Sources */,
 				ED4DB8561D0C803F00635C71 /* tcp-yeah.cc in Sources */,
 				ED7C6C41199D2257009165B6 /* pending-data.cc in Sources */,
-				EDEB0E881D10A0E800F0C233 /* mptcp-cc-uncoupled.cc in Sources */,
 				ED7C6C42199D2257009165B6 /* rtt-estimator.cc in Sources */,
 				ED7C6C30199D2257009165B6 /* ipv4-raw-socket-factory-impl.cc in Sources */,
 				ED7C6C31199D2257009165B6 /* ipv4-raw-socket-impl.cc in Sources */,

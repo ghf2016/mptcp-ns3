@@ -1,16 +1,34 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Copyright (c) 2015 University of Sussex
+ * Copyright (c) 2015 Université Pierre et Marie Curie (UPMC)
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author:  Matthieu Coudron <matthieu.coudron@lip6.fr>
+ *          Morteza Kheirkhah <m.kheirkhah@sussex.ac.uk>
+ */
 
-#include "ns3/mptcp-lia.h"
 #include "ns3/log.h"
-#include "ns3/object.h"
-#include "ns3/mp-tcp-id-manager.h"
-//#include "ns3/mp-tcp-id-manager.h"
+#include "mptcp-lia.h"
+#include "mptcp-subflow.h"
+#include "mptcp-meta-socket.h"
 
-NS_LOG_COMPONENT_DEFINE("MpTcpLia");
+NS_LOG_COMPONENT_DEFINE ("MpTcpLia");
 
-
-namespace ns3 {
-
-
+namespace ns3
+{
 
 NS_OBJECT_ENSURE_REGISTERED (MpTcpLia);
 
@@ -18,113 +36,116 @@ TypeId
 MpTcpLia::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::MpTcpLia")
-    .SetParent<MpTcpMetaSocket> ()
+    .SetParent<TcpNewReno> ()
+    .SetGroupName ("Internet")
     .AddConstructor<MpTcpLia> ()
-//    .AddAttribute ("ReTxThreshold", "Threshold for fast retransmit",
-//                    UintegerValue (3),
-//                    MakeUintegerAccessor (&TcpNewReno::m_retxThresh),
-//                    MakeUintegerChecker<uint32_t> ())
-//    .AddAttribute ("LimitedTransmit", "Enable limited transmit",
-//		    BooleanValue (false),
-//		    MakeBooleanAccessor (&TcpNewReno::m_limitedTx),
-//		    MakeBooleanChecker ())
-    .AddTraceSource ("Alpha",
-//                     "The TCP connection's congestion window",
-//                     MakeTraceSourceAccessor (&MpTcpLia::m_cWnd))
+//    .AddTraceSource ("Alpha",
+//                     "Value of the alp",
+//                     MakeTraceSourceAccessor (&MpTcpLia::m_alpha),
+//                     "ns3::WTH_IS_ZIS_TracedValueCallback"
+//                     )
+      ;
   ;
   return tid;
 }
 
+TypeId 
+MpTcpLia::GetInstanceTypeId (void)
+{
+  return GetTypeId ();
+}
 
-//TypeId
-//MpTcpLia::GetInstanceTypeId(void) const
-//{
-//  return GetTypeId();
-//}
+
+// TODO we should aggregate CC for the mptcp case ?
+MpTcpLia::MpTcpLia() : TcpNewReno()
+                      , m_alpha (1)
+{
+  NS_LOG_FUNCTION_NOARGS();
+}
+
+MpTcpLia::~MpTcpLia ()
+{
+  NS_LOG_FUNCTION_NOARGS();
+}
 
 
-MpTcpLia::MpTcpLia(void) :
-  MpTcpMetaSocket()
+std::string
+MpTcpLia::GetName () const
+{
+  return "MpTcpLia";
+}
+
+double
+MpTcpLia::ComputeAlpha (Ptr<MpTcpMetaSocket> metaSock, Ptr<TcpSocketState> tcb) const
+{
+  // this method is called whenever a congestion happen in order to regulate the agressivety of m_subflows
+  // m_alpha = cwnd_total * MAX(cwnd_i / rtt_i^2) / {SUM(cwnd_i / rtt_i))^2}   //RFC 6356 formula (2)
+  
+  NS_LOG_FUNCTION(this);
+  
+  double alpha = 0;
+  double maxi = 0; // Matches the MAX(cwnd_i / rtt_i^2) part
+  double sumi = 0; // SUM(cwnd_i / rtt_i)
+
+  
+  NS_ASSERT (metaSock);
+  // TODO here
+  for (uint32_t i = 0; i < metaSock->GetNActiveSubflows(); i++)
+    {
+      Ptr<MpTcpSubflow> sFlow = metaSock->GetActiveSubflow(i);
+
+      Time time = sFlow->GetRttEstimator()->GetEstimate();
+      double rtt = time.GetSeconds();
+      double tmpi = tcb->m_cWnd.Get() / (rtt * rtt);
+      
+      if (maxi < tmpi)
+        maxi = tmpi;
+
+      sumi += tcb->m_cWnd.Get() / rtt;
+    }
+  alpha = (metaSock->GetTotalCwnd() * maxi) / (sumi * sumi);
+  return alpha;
+}
+
+void
+MpTcpLia::IncreaseWindow (Ptr<TcpSocketState> tcb, uint32_t segmentsAcked)
 {
   NS_LOG_FUNCTION (this);
+
+  // Increase of cwnd based on current phase (slow start or congestion avoidance)
+  if (tcb->m_cWnd < tcb->m_ssThresh)
+    {
+      tcb->m_cWnd += tcb->m_segmentSize;
+      NS_LOG_INFO ("In SlowStart, updated tcb " << tcb << " cwnd to " << tcb->m_cWnd << " ssthresh " << tcb->m_ssThresh);
+    }
+  else
+    {
+      Ptr<MpTcpMetaSocket> metaSock = DynamicCast<MpTcpMetaSocket>(tcb->m_socket);
+      uint32_t totalCwnd = metaSock->GetTotalCwnd ();
+
+      m_alpha = ComputeAlpha (metaSock, tcb);
+      double alpha_scale = 1;
+//         The alpha_scale parameter denotes the precision we want for computing alpha
+//                alpha  bytes_acked * MSS_i   bytes_acked * MSS_i
+//          min ( --------------------------- , ------------------- )  (3)
+//                 alpha_scale * cwnd_total              cwnd_i
+    
+    double adder = std::min (m_alpha* tcb->m_segmentSize * tcb->m_segmentSize / (totalCwnd* alpha_scale),
+        static_cast<double>((tcb->m_segmentSize * tcb->m_segmentSize) / tcb->m_cWnd.Get ()));
+      
+    // Congestion avoidance mode, increase by (segSize*segSize)/cwnd. (RFC2581, sec.3.1)
+      // To increase cwnd for one segSize per RTT, it should be (ackBytes*segSize)/cwnd
+
+//    adder = std::max (1.0, adder);
+      tcb->m_cWnd += static_cast<uint32_t> (adder);
+      NS_LOG_INFO ("In CongAvoid, updated tcb " << tcb << " cwnd to " << tcb->m_cWnd << " ssthresh " << tcb->m_ssThresh);
+    }
 }
 
-MpTcpLia::MpTcpLia(const MpTcpLia& sock) :
-  MpTcpMetaSocket(sock)
+Ptr<TcpCongestionOps>
+MpTcpLia::Fork ()
 {
-  NS_LOG_FUNCTION (this);
-  NS_LOG_LOGIC ("Invoked the copy constructor");
+  return CreateObject<MpTcpLia>();
 }
 
-MpTcpLia::~MpTcpLia()
-{
-  NS_LOG_FUNCTION (this);
 }
-
-  // inherited function, no need to doc.
-//TypeId
-//MpTcpLia::GetInstanceTypeId (void) const
-//{
-//  return GetTypeId();
-//}
-
-Ptr<MpTcpMetaSocket>
-MpTcpLia::ForkAsMeta(void)
-{
-  NS_LOG_UNCOND ("Fork as meta" << this->GetInstanceTypeId() << " to " << GetTypeId());
-//  Ptr<MpTcpLia> p =
-
-  return CopyObject<MpTcpLia>(this);
-}
-
-uint32_t
-MpTcpLia::GetSSThresh(void) const
-{
-  return 2;
-}
-
-
-        calculateAlpha();
-        adder = alpha * MSS * MSS / m_totalCwnd;
-        adder = std::max(1.0, adder);
-        sFlow->cwnd += static_cast<double>(adder);
-
-        NS_LOG_ERROR ("Subflow "
-                <<(int)sFlowIdx
-                <<" Congestion Control (Linked_Increases): alpha "<<alpha
-                <<" increment is "<<adder
-                <<" GetSSThresh() "<< GetSSThresh()
-                << " cwnd "<<cwnd );
-        break;
-
-
-uint32_t
-MpTcpLia::GetInitialCwnd(void) const
-{
-  return 10;
-}
-
-//
-//Ptr<SubFlow>
-//MpTcpLia::GetSubflowToUse(Ptr<MpTcpMetaSocket> metaSock)
-//{
-//  uint8_t nextSubFlow = 0;
-//  switch (m_distribAlgo)
-//    {
-//  case Round_Robin:
-//    nextSubFlow = (m_lastUsedsFlowIdx + 1) % m_subflows.size();
-//    break;
-//  default:
-//    break;
-//    }
-//  return nextSubFlow;
-//
-//}
-//
-
-
-
-
-} //end of ns3
-
-

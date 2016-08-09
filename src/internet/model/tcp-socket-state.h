@@ -27,6 +27,8 @@
 #include "ns3/sequence-number.h"
 
 namespace ns3 {
+  
+class TcpSocketImpl;
 
 class TcpSocketState : public Object
 {
@@ -98,6 +100,8 @@ public:
   // Segment
   uint32_t               m_segmentSize;     //!< Segment size
   SequenceNumber32       m_lastAckedSeq;    //!< Last sequence ACKed
+  
+  Ptr<TcpSocketImpl>     m_socket;          //!< Pointer to socket, usually Null
   
   TracedValue<TcpCongState_t> m_congState;    //!< State in the Congestion state machine
   TracedValue<SequenceNumber32> m_highTxMark; //!< Highest seqno ever sent, regardless of ReTx

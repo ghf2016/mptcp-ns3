@@ -46,16 +46,11 @@ class Packet;
 class TcpL4Protocol;
 class MpTcpPathIdManager;
 class MpTcpSubflow;
-//class MpTcpSchedulerRoundRobin;
-//class MpTcpCongestionControl;
 class TcpOptionMpTcpDSS;
 class TcpOptionMpTcpJoin;
 class OutputStreamWrapper;
 
 using namespace std;
-
-/**
-TODO move all the supplementary stuff to MpTcpSocketState
 
 /**
 * \class MpTcpMetaSocket
@@ -377,6 +372,7 @@ public:
   virtual uint32_t AvailableWindow();
   virtual uint32_t GetRwndSize ();
   virtual uint32_t UnAckDataCount ();
+  virtual uint32_t GetTotalCwnd ();
   
   virtual void PersistTimeout();
   

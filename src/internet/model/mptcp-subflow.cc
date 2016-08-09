@@ -86,6 +86,7 @@ MpTcpSubflow::SetMeta(Ptr<MpTcpMetaSocket> metaSocket)
   NS_ASSERT(metaSocket);
   NS_LOG_FUNCTION(this);
   m_metaSocket = metaSocket;
+  m_tcb->m_socket = metaSocket;
 }
 
 void MpTcpSubflow::SetMptcpEnabled (bool flag)

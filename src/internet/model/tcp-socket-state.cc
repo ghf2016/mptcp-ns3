@@ -7,6 +7,7 @@
 //
 
 #include "tcp-socket-state.h"
+#include "tcp-socket-impl.h"
 
 namespace ns3
 {
@@ -52,6 +53,7 @@ namespace ns3
   m_initialSsThresh (0),
   m_segmentSize (0),
   m_lastAckedSeq (0),
+  m_socket (0),
   m_congState (CA_OPEN),
   m_highTxMark (0),
   // Change m_nextTxSequence for non-zero initial sequence number
@@ -66,6 +68,7 @@ namespace ns3
   m_initialCWnd (other.m_initialCWnd),
   m_initialSsThresh (other.m_initialSsThresh),
   m_segmentSize (other.m_segmentSize),
+  m_socket (0), 
   m_lastAckedSeq (other.m_lastAckedSeq),
   m_congState (other.m_congState),
   m_highTxMark (other.m_highTxMark),
