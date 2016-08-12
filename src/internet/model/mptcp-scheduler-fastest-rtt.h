@@ -73,7 +73,9 @@ public:
   /**
   Return Index of subflow to use
   */
-  virtual Ptr<MpTcpSubflow> GetSubflowToUseForEmptyPacket();
+  virtual Ptr<MpTcpSubflow> GetAvailableControlSubflow();
+  
+  virtual Ptr<MpTcpSubflow> GetAvailableSubflow (uint32_t dataToSend, uint32_t metaWindow);
 
 protected:
 //  uint8_t  m_lastUsedFlowId;        //!< keep track of last used subflow

@@ -71,7 +71,7 @@ MpTcpSchedulerFastestRTT::FindFastestSubflowWithFreeWindow() const
   
   for(int i = 0; i < (int) m_metaSock->GetNActiveSubflows() ; i++ )
   {
-    Ptr<MpTcpSubflow> sf = m_metaSock->GetSubflow(i);
+    Ptr<MpTcpSubflow> sf = m_metaSock->GetActiveSubflow(i);
     if(sf->AvailableWindow() <= 0)
     {
       continue;
@@ -88,13 +88,49 @@ MpTcpSchedulerFastestRTT::FindFastestSubflowWithFreeWindow() const
 }
 
 Ptr<MpTcpSubflow>
-MpTcpSchedulerFastestRTT::GetSubflowToUseForEmptyPacket()
+MpTcpSchedulerFastestRTT::GetAvailableControlSubflow()
 {
   NS_ASSERT(m_metaSock->GetNActiveSubflows() > 0 );
-  return  m_metaSock->GetSubflow(0);
+  return  m_metaSock->GetActiveSubflow(0);
   //  m_lastUsedFlowId = (m_lastUsedFlowId + 1) % m_metaSock->GetNActiveSubflows();
   //  return m_metaSock->GetSubFlow(m_lastUsedFlowId);
 }
+  
+Ptr<MpTcpSubflow> MpTcpSchedulerFastestRTT::GetAvailableSubflow (uint32_t dataToSend, uint32_t metaWindow)
+{
+  NS_LOG_FUNCTION(this);
+  NS_ASSERT(m_metaSock);
+  
+  //int nbOfSubflows = m_metaSock->GetNActiveSubflows();
+  //int attempt = 0;
+  
+  int id = FindFastestSubflowWithFreeWindow();
+  
+  if(id < 0)
+  {
+    NS_LOG_DEBUG("No valid subflow");
+    return nullptr;
+  }
+  
+  //TODO: need to get next available subflow if this one cannot send data
+  
+  Ptr<MpTcpSubflow> subflow = m_metaSock->GetActiveSubflow(id);
+  uint32_t subflowWindow = subflow->AvailableWindow();
+  
+  NS_LOG_DEBUG("subflow AvailableWindow  [" << subflowWindow << "]");
+  uint32_t canSend = std::min( subflowWindow, metaWindow);
+  //uint32_t canSend = subflowWindow;
+  
+  if(canSend > 0 && subflow->CanSendPendingData(canSend))
+  {
+    return subflow;
+  }
+  
+  NS_LOG_DEBUG("No subflow available");
+  return nullptr;
+  
+}
+
 
 
 // TODO this will be solved
@@ -114,9 +150,9 @@ MpTcpSchedulerFastestRTT::GenerateMapping(int& activeSubflowArrayId, SequenceNum
   uint32_t amountOfDataToSend = 0;
   
   //! Tx data not sent to subflows yet
-  SequenceNumber32 metaNextTxSeq = m_metaSock->m_tcb->m_nextTxSequence.Get();
+  SequenceNumber32 metaNextTxSeq = m_metaSock->GetNextTxSequence();
   
-  amountOfDataToSend = m_metaSock->m_txBuffer->SizeFromSequence( metaNextTxSeq );
+  amountOfDataToSend = m_metaSock->GetTxBuffer()->SizeFromSequence(metaNextTxSeq);
   
   uint32_t metaWindow = m_metaSock->AvailableWindow();
   
@@ -145,7 +181,7 @@ MpTcpSchedulerFastestRTT::GenerateMapping(int& activeSubflowArrayId, SequenceNum
   //    {
   //        attempt++;
   //        m_lastUsedFlowId = (m_lastUsedFlowId + 1) % nbOfSubflows;
-  Ptr<MpTcpSubflow> subflow = m_metaSock->GetSubflow(id);
+  Ptr<MpTcpSubflow> subflow = m_metaSock->GetActiveSubflow(id);
   uint32_t subflowWindow = subflow->AvailableWindow();
   
   NS_LOG_DEBUG("subflow AvailableWindow  [" << subflowWindow << "]");
@@ -154,7 +190,7 @@ MpTcpSchedulerFastestRTT::GenerateMapping(int& activeSubflowArrayId, SequenceNum
   
   //! Can't send more than SegSize
   //metaWindow en fait on s'en fout du SegSize ?
-  if(canSend > 0 && subflow->CanSendPendingData())
+  if(canSend > 0 && subflow->CanSendPendingData(canSend))
   {
     
     // activeSubflowArrayId = m_lastUsedFlowId;

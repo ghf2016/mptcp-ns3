@@ -258,8 +258,6 @@
 		ED6E22101C5D24B100028B56 /* tcp-general-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED6E21EA1C5D136F00028B56 /* tcp-general-test.cc */; };
 		ED6E22111C5D24B800028B56 /* tcp-error-model.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED6E21E61C5D136F00028B56 /* tcp-error-model.cc */; };
 		ED712CAF197802890074513E /* libstats.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7D1D5160523BF00ECD480 /* libstats.dylib */; };
-		ED7141381D3D29E900BAEE7A /* tcp-socket-wrapper.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED7141361D3D29E900BAEE7A /* tcp-socket-wrapper.cc */; };
-		ED7141391D3D29E900BAEE7A /* tcp-socket-wrapper.h in Headers */ = {isa = PBXBuildFile; fileRef = ED7141371D3D29E900BAEE7A /* tcp-socket-wrapper.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED71413E1D3E955900BAEE7A /* mptcp-meta-socket.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED71413C1D3E955900BAEE7A /* mptcp-meta-socket.cc */; };
 		ED71413F1D3E955900BAEE7A /* mptcp-meta-socket.h in Headers */ = {isa = PBXBuildFile; fileRef = ED71413D1D3E955900BAEE7A /* mptcp-meta-socket.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED77A9F31BFF9266001E1B26 /* build-profile.h in Headers */ = {isa = PBXBuildFile; fileRef = ED77A9F21BFF9266001E1B26 /* build-profile.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -674,6 +672,8 @@
 		ED8883751CED105500EDA1E9 /* libpoint2point.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = ED3D40331694646400520C4E /* libpoint2point.dylib */; };
 		ED8883761CED105500EDA1E9 /* libnetwork.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CEC71605138600ECD480 /* libnetwork.dylib */; };
 		ED8883771CED105500EDA1E9 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
+		ED89B21D1D5E290000781CD0 /* mptcp-scheduler-fastest-rtt.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E5F1D10A05B00F0C233 /* mptcp-scheduler-fastest-rtt.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		ED89B21E1D5E290800781CD0 /* mptcp-scheduler-fastest-rtt.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E5E1D10A05B00F0C233 /* mptcp-scheduler-fastest-rtt.cc */; };
 		ED91DA781D217C3700A69097 /* mptcp-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED91DA771D217C1700A69097 /* mptcp-test.cc */; };
 		EDC1D83F1D58B07200DD1D64 /* tcp-parameters.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDC1D83B1D58B07200DD1D64 /* tcp-parameters.cc */; };
 		EDC1D8401D58B07200DD1D64 /* tcp-parameters.h in Headers */ = {isa = PBXBuildFile; fileRef = EDC1D83C1D58B07200DD1D64 /* tcp-parameters.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -710,7 +710,6 @@
 		EDEB0E731D10A05B00F0C233 /* mptcp-id-manager-impl.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E571D10A05B00F0C233 /* mptcp-id-manager-impl.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E751D10A05B00F0C233 /* mptcp-id-manager.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E591D10A05B00F0C233 /* mptcp-id-manager.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E791D10A05B00F0C233 /* mptcp-mapping.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E5D1D10A05B00F0C233 /* mptcp-mapping.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		EDEB0E7B1D10A05B00F0C233 /* mptcp-scheduler-fastest-rtt.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E5F1D10A05B00F0C233 /* mptcp-scheduler-fastest-rtt.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E7D1D10A05B00F0C233 /* mptcp-scheduler-round-robin.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E611D10A05B00F0C233 /* mptcp-scheduler-round-robin.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E7E1D10A05B00F0C233 /* mptcp-scheduler.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E621D10A05B00F0C233 /* mptcp-scheduler.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EDEB0E811D10A05B00F0C233 /* mptcp-socket.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E651D10A05B00F0C233 /* mptcp-socket.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -9843,7 +9842,6 @@
 				ED7C6BA7199D0956009165B6 /* chunk.h in Headers */,
 				ED7C6BA8199D0956009165B6 /* header.h in Headers */,
 				ED7C6BA9199D0956009165B6 /* net-device.h in Headers */,
-				EDEB0E7B1D10A05B00F0C233 /* mptcp-scheduler-fastest-rtt.h in Headers */,
 				ED7C6BAA199D0956009165B6 /* nix-vector.h in Headers */,
 				EDEB0E791D10A05B00F0C233 /* mptcp-mapping.h in Headers */,
 				ED7C6BAC199D0956009165B6 /* node.h in Headers */,
@@ -9984,7 +9982,6 @@
 				ED05A6981C9871D20008E602 /* rip-helper.h in Headers */,
 				EDC1D8401D58B07200DD1D64 /* tcp-parameters.h in Headers */,
 				ED7C6C74199D280A009165B6 /* icmpv6-l4-protocol.h in Headers */,
-				ED7141391D3D29E900BAEE7A /* tcp-socket-wrapper.h in Headers */,
 				ED7C6C81199D280A009165B6 /* ipv6-interface.h in Headers */,
 				ED7C6C89199D280B009165B6 /* ndisc-cache.h in Headers */,
 				ED05A68F1C986F2A0008E602 /* rip-header.h in Headers */,
@@ -9998,6 +9995,7 @@
 				ED7C6C7D199D280A009165B6 /* ipv4-routing-protocol.h in Headers */,
 				ED7C6C8D199D280B009165B6 /* udp-socket.h in Headers */,
 				ED7C6C8C199D280B009165B6 /* udp-socket-factory.h in Headers */,
+				ED89B21D1D5E290000781CD0 /* mptcp-scheduler-fastest-rtt.h in Headers */,
 				ED7C6C8B199D280B009165B6 /* tcp-socket.h in Headers */,
 				ED7C6C9F199D2B59009165B6 /* tcp-socket-factory.h in Headers */,
 				ED7C6C7E199D280A009165B6 /* ipv4.h in Headers */,
@@ -10802,7 +10800,6 @@
 				ED05A68E1C986F2A0008E602 /* rip-header.cc in Sources */,
 				ED7C6C22199D201B009165B6 /* tcp-westwood.cc in Sources */,
 				ED7C6C1C199D201B009165B6 /* tcp-rx-buffer.cc in Sources */,
-				ED7141381D3D29E900BAEE7A /* tcp-socket-wrapper.cc in Sources */,
 				ED7C6C21199D201B009165B6 /* tcp-tx-buffer.cc in Sources */,
 				ED4B0EA719F0249800C2232D /* tcp-option.cc in Sources */,
 				ED4B0EA419F0249800C2232D /* tcp-option-rfc793.cc in Sources */,
@@ -10828,6 +10825,7 @@
 				ED7C6C1F199D201B009165B6 /* tcp-socket.cc in Sources */,
 				ED7C6C1E199D201B009165B6 /* tcp-socket-factory.cc in Sources */,
 				ED7C6C10199D201B009165B6 /* ipv4.cc in Sources */,
+				ED89B21E1D5E290800781CD0 /* mptcp-scheduler-fastest-rtt.cc in Sources */,
 				ED7C6C0D199D201B009165B6 /* ipv4-raw-socket-factory.cc in Sources */,
 				ED7C6C11199D201B009165B6 /* ipv6-header.cc in Sources */,
 				ED7C6C12199D201B009165B6 /* ipv6-interface-address.cc in Sources */,

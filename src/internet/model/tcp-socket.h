@@ -250,12 +250,6 @@ private:
    * \returns the persistent timout
    */
   virtual Time GetPersistTimeout (void) const = 0;
-  
-  
-  friend class TcpSocketWrapper;
-  
-  virtual void SetSocketWrapper (Ptr<TcpSocketWrapper> proxy) = 0;
-  virtual Ptr<TcpSocketWrapper> GetSocketWrapper () = 0;
 
 };
 

@@ -20,7 +20,7 @@
  */
 
 #define NS_LOG_APPEND_CONTEXT \
-  if (m_node) { std::clog << Simulator::Now ().GetSeconds () << " [node " << m_node->GetId () << "] "; }
+  if (m_node) { std::clog << " [node " << m_node->GetId () << "] "; }
 
 #include "ns3/abort.h"
 #include "ns3/node.h"
@@ -153,9 +153,9 @@ TcpSocketBase::GetTypeId (void)
 }
 
 TypeId
-TcpSocketBase::GetInstanceTypeId() const
+TcpSocketBase::GetInstanceTypeId () const
 {
-  return TcpSocketBase::GetTypeId();
+  return TcpSocketBase::GetTypeId ();
 }
 
 TcpSocketBase::TcpSocketBase (void)
