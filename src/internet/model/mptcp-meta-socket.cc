@@ -139,7 +139,7 @@ MpTcpMetaSocket::MpTcpMetaSocket(const MpTcpMetaSocket& sock) : TcpSocketImpl(so
                                                               , m_subflowConnectionSucceeded(sock.m_subflowConnectionSucceeded)
                                                               , m_subflowConnectionFailure(sock.m_subflowConnectionFailure)
                                                               , m_joinRequest(sock.m_joinRequest)
-                                                              , m_subflowCreated(sock.m_subflowCreated)
+                                                              , m_subflowConnectionCreated(sock.m_subflowConnectionCreated)
                                                               , m_sendPendingDataEvent ()
                                                               , m_retxEvent ()
                                                               , m_lastAckEvent()
@@ -159,6 +159,10 @@ MpTcpMetaSocket::MpTcpMetaSocket(const MpTcpMetaSocket& sock) : TcpSocketImpl(so
 
   //Generate a new connection key for the copied meta socket.
   GenerateUniqueMpTcpKey();
+  
+  // Reset all callbacks to null
+  Callback<void, Ptr<MpTcpMetaSocket>> vPS = MakeNullCallback<void, Ptr<MpTcpMetaSocket>> ();
+  SetFullyEstablishedCallback(vPS);
 }
 
 MpTcpMetaSocket::~MpTcpMetaSocket(void)
@@ -188,8 +192,10 @@ MpTcpMetaSocket::~MpTcpMetaSocket(void)
 //  NS_LOG_INFO(Simulator::Now().GetSeconds() << " ["<< this << "] ~MpTcpMetaSocket ->" << m_tcp );
 
   m_subflowConnectionSucceeded = MakeNullCallback<void, Ptr<MpTcpSubflow> >();
-  m_subflowCreated = MakeNullCallback<void, Ptr<MpTcpSubflow> >();
-  m_subflowConnectionSucceeded = MakeNullCallback<void, Ptr<MpTcpSubflow> >();
+  m_subflowConnectionFailure = MakeNullCallback<void, Ptr<MpTcpSubflow>>();
+  m_subflowConnectionCreated = MakeNullCallback<void, Ptr<MpTcpSubflow>, const Address&>();
+  m_joinRequest = MakeNullCallback<bool, Ptr<MpTcpMetaSocket>, const Address&, const Address&>();
+  m_connectionFullyEstablished = MakeNullCallback<void, Ptr<MpTcpMetaSocket>>();
 }
   
 TypeId
@@ -313,26 +319,7 @@ MpTcpMetaSocket::NewSubflowJoinRequest (Ptr<Packet> p,
   // Call it now so that endpoint gets allocated
   subflow->CompleteFork(p, tcpHeader, fromAddress, toAddress);
 }
-  
-bool
-MpTcpMetaSocket::NotifyJoinRequest (const Address &from, const Address & toAddress)
-{
-  NS_LOG_FUNCTION (this << &from);
-  if (!m_joinRequest.IsNull ())
-  {
-    return m_joinRequest (this, from, toAddress);
-  }
-  else
-  {
-    // accept all incoming connections by default.
-    // this way people writing code don't have to do anything
-    // special like register a callback that returns true
-    // just to get incoming connections
-    return true;
-  }
-}
-  
-  
+
 bool
 MpTcpMetaSocket::OwnIP(const Address& address) const
 {
@@ -449,6 +436,22 @@ MpTcpMetaSocket::GetActiveSubflow(uint32_t index) const
   return m_subflows[index];
 }
 
+Ptr<MpTcpSubflow> MpTcpMetaSocket::GetMaster ()
+{
+  return m_master;
+}
+
+Ptr<MpTcpSubflow> MpTcpMetaSocket::GetSubflow(uint32_t index)
+{
+  NS_ASSERT_MSG(index < GetNSubflows(), "Subflow index is out of range.");
+  return m_subflows[index];
+}
+
+uint32_t MpTcpMetaSocket::GetNSubflows () const
+{
+  return uint32_t(m_subflows.size());
+}
+  
 void
 MpTcpMetaSocket::SetPeerKey(uint64_t remoteKey)
 {
@@ -591,11 +594,6 @@ MpTcpMetaSocket::OnSubflowUpdateCwnd(Ptr<MpTcpSubflow> subflow, uint32_t oldCwnd
                                                   &MpTcpMetaSocket::SendPendingData,
                                                   this);
   }
-}
-  
-void MpTcpMetaSocket::OnSubflowDataSent(Ptr<Socket> socket, uint32_t dataSent)
-{
-  NotifyDataSent(dataSent);
 }
 
   MpTcpMetaSocket::SubflowList MpTcpMetaSocket::GetSubflowsWithState(TcpStates_t state)
@@ -745,15 +743,23 @@ MpTcpMetaSocket::AddSubflow(Ptr<MpTcpSubflow> sflow, bool isMaster)
 {
   NS_LOG_FUNCTION(sflow);
   
+  bool ok = true;
+  
   //Let the meta socket know when the subflow TCP state has changed.
   sflow->TraceConnectWithoutContext ("State", MakeBoundCallback(&MpTcpMetaSocket::NotifySubflowNewState, this, sflow));
+  NS_ASSERT(ok);
   
+  //The meta socket should be notified when a subflow's congestion window changes so it can attempt to send pending data
   sflow->TraceConnectWithoutContext ("CongestionWindow", MakeBoundCallback(&MpTcpMetaSocket::NotifySubflowUpdateCwnd, this, sflow));
+  NS_ASSERT(ok);
   
-  sflow->SetDataSentCallback(MakeCallback(&MpTcpMetaSocket::OnSubflowDataSent, this));
+  sflow->SetDataSentCallback (MakeCallback(&MpTcpMetaSocket::NotifySubflowDataSent, this));
   
-  sflow->SetAcceptCallback(MakeCallback(&MpTcpMetaSocket::OnSubflowConnectionRequest, this),
-                           MakeCallback(&MpTcpMetaSocket::OnSubflowNewConnectionCreated, this));
+  sflow->SetAcceptCallback (MakeCallback(&MpTcpMetaSocket::NotifySubflowConnectionRequest, this),
+                            MakeCallback(&MpTcpMetaSocket::NotifySubflowNewConnectionCreated, this));
+  
+  sflow->SetConnectCallback (MakeCallback (&MpTcpMetaSocket::NotifySubflowConnectionSuccess,this),
+                             MakeCallback (&MpTcpMetaSocket::NotifySubflowConnectionFailure,this));
   
   if(isMaster)
   {
@@ -766,88 +772,73 @@ MpTcpMetaSocket::AddSubflow(Ptr<MpTcpSubflow> sflow, bool isMaster)
   {
     m_activeSubflows.push_back(sflow);
   }
-  
-  return;
-  
-  NS_FATAL_ERROR("TODO: fix implementation");
-  
-#if 0
-  //  Ptr<MpTcpSubflow> sf = DynamicCast<MpTcpSubflow>(sflow);
-  Ptr<MpTcpSubflow> sf = sflow;
-  bool ok;
-  
-  NS_ASSERT_MSG(ok, "Tracing mandatory to update the MPTCP global congestion window");
-  
-  //! We need to act on certain subflow state transitions according to doc "There is not a version with bound arguments."
-  //  NS_ASSERT(sFlow->TraceConnect ("State", "State", MakeCallback(&MpTcpMetaSocket::OnSubflowNewState, this)) );
-  ok = sf->TraceConnectWithoutContext ("State", MakeBoundCallback(&onSubflowNewState, this, sf));
-  NS_ASSERT_MSG(ok, "Tracing mandatory to update the MPTCP socket state");
-  
-  if(sf->IsMaster())
+}
+
+bool
+MpTcpMetaSocket::NotifyJoinRequest (const Address &from, const Address & toAddress)
+{
+  NS_LOG_FUNCTION (this << &from);
+  if (!m_joinRequest.IsNull ())
   {
-    //! then we update
-    m_state = sf->GetState();
-    m_mptcpLocalKey = sf->m_mptcpLocalKey;
-    m_mptcpLocalToken = sf->m_mptcpLocalToken;
-    NS_LOG_DEBUG("Set master key/token to "<< m_mptcpLocalKey << "/" << m_mptcpLocalToken);
-    
-    // Those may be overriden later
-    m_endPoint = sf->m_endPoint;
-    m_endPoint6 = sf->m_endPoint6;
+    return m_joinRequest (this, from, toAddress);
   }
-  
-  sf->SetMeta(this);
-  
-  /* We override here callbacks so that subflows
-   don't communicate with the applications directly. The meta socket will
-   */
-  //  sf->SetSendCallback ( MakeCallback);
-  sf->SetConnectCallback (MakeCallback (&MpTcpMetaSocket::OnSubflowConnectionSuccess,this),
-                          MakeCallback (&MpTcpMetaSocket::OnSubflowConnectionFailure,this));   // Ok
-  sf->SetAcceptCallback (
-                         MakeNullCallback<bool, Ptr<Socket>, const Address &>(),
-                         //                         MakeCallback (&MpTcpMetaSocket::NotifyConnectionRequest,this)
-                         MakeCallback (&MpTcpMetaSocket::OnSubflowCreated,this));
-  // Il y a aussi les!
-  //  sf->SetCloseCallbacks
-  //  sf->SetDataSentCallback (  );
-  //  sf->RecvCallback (cbRcv);
-  sf->SetCongestionControlAlgorithm(this->m_congestionControl);
-  
-  m_subflows[Others].push_back( sf );
-#endif
+  else
+  {
+    // accept all incoming connections by default.
+    // this way people writing code don't have to do anything
+    // special like register a callback that returns true
+    // just to get incoming connections
+    return true;
+  }
+}
+
+bool MpTcpMetaSocket::NotifySubflowConnectionRequest(Ptr<Socket> socket, const Address &from)
+{
+  Ptr<MpTcpSubflow> subflow = DynamicCast<MpTcpSubflow>(socket);
+  if(subflow->IsMaster())
+  {
+    return NotifyConnectionRequest(from);
+  }
+  else
+  {
+    //This is a join request, dealt with in MpTcpSubflow ProcessListen seperately, which
+    //calls the NotifyJoinRequest callback. Should never be called.
+    NS_FATAL_ERROR("Shouldn't be called");
+    return true;
+  }
+}
+
+void MpTcpMetaSocket::NotifySubflowNewConnectionCreated(Ptr<Socket> socket, const Address &from)
+{
+  Ptr<MpTcpSubflow> subflow = DynamicCast<MpTcpSubflow>(socket);
+  if(subflow->IsMaster())
+  {
+    NotifyNewConnectionCreated(this, from);
+  }
+  else if (!m_subflowConnectionCreated.IsNull ())
+  {
+    m_subflowConnectionCreated(subflow, from);
+  }
 }
 
 void
-MpTcpMetaSocket::OnSubflowCreated (Ptr<Socket> socket, const Address &from)
+MpTcpMetaSocket::NotifySubflowConnectionSuccess (Ptr<Socket> socket)
 {
-    NS_LOG_LOGIC(this);
-    Ptr<MpTcpSubflow> sf = DynamicCast<MpTcpSubflow>(socket);
-
-    NotifySubflowCreated(sf);
-}
-  
-bool MpTcpMetaSocket::OnSubflowConnectionRequest(Ptr<Socket> socket, const Address &from)
-{
-  return NotifyConnectionRequest(from);
-}
-
-void MpTcpMetaSocket::OnSubflowNewConnectionCreated(Ptr<Socket> socket, const Address &from)
-{
-  NotifyNewConnectionCreated(this, from);
+  NS_LOG_LOGIC(this);
+  Ptr<MpTcpSubflow> subflow = DynamicCast<MpTcpSubflow>(socket);
+  if(subflow->IsMaster())
+  {
+    //The master subflow's success indicates that the meta socket has succeeded in connecting
+    //But the NotifyConnectionSuccess is dealt with in the ConnectionSucceeded call.
+  }
+  else if (!m_subflowConnectionSucceeded.IsNull ())
+  {
+    m_subflowConnectionSucceeded (subflow);
+  }
 }
 
 void
-MpTcpMetaSocket::OnSubflowConnectionSuccess (Ptr<Socket> socket)
-{
-
-    NS_LOG_LOGIC(this);
-    Ptr<MpTcpSubflow> sf = DynamicCast<MpTcpSubflow>(socket);
-    NotifySubflowConnected(sf);
-}
-
-void
-MpTcpMetaSocket::OnSubflowConnectionFailure (Ptr<Socket> socket)
+MpTcpMetaSocket::NotifySubflowConnectionFailure (Ptr<Socket> socket)
 {
     NS_LOG_LOGIC(this);
     Ptr<MpTcpSubflow> sf = DynamicCast<MpTcpSubflow>(socket);
@@ -861,7 +852,20 @@ MpTcpMetaSocket::OnSubflowConnectionFailure (Ptr<Socket> socket)
         NS_FATAL_ERROR("TODO");
     }
 }
+  
+void MpTcpMetaSocket::NotifySubflowDataSent(Ptr<Socket> socket, uint32_t dataSent)
+{
+  NotifyDataSent(dataSent);
+}
 
+void MpTcpMetaSocket::NotifyFullyEstablished ()
+{
+  if (!m_connectionFullyEstablished.IsNull())
+  {
+    m_connectionFullyEstablished(this);
+  }
+}
+  
 void
 MpTcpMetaSocket::OnInfiniteMapping(Ptr<TcpOptionMpTcpDSS> dss, Ptr<MpTcpSubflow> sf)
 {
@@ -948,15 +952,18 @@ MpTcpMetaSocket::PersistTimeout()
   NS_FATAL_ERROR("TODO");
 }
 
+void MpTcpMetaSocket::SetFullyEstablishedCallback (Callback<void, Ptr<MpTcpMetaSocket>> callback)
+{
+  m_connectionFullyEstablished = callback;
+}
 
 void
 MpTcpMetaSocket::BecomeFullyEstablished()
 {
-    NS_LOG_FUNCTION (this);
-    m_receivedDSS = true;
+  NS_LOG_FUNCTION (this);
+  m_receivedDSS = true;
 
-    // should be called only on client side
-    //ConnectionSucceeded();
+  NotifyFullyEstablished();
 }
 
 bool
@@ -1369,62 +1376,26 @@ void MpTcpMetaSocket::EstablishSubflow(Ptr<MpTcpSubflow> subflow,
   SendPendingData();
 }
 
-
-void
-MpTcpMetaSocket::NotifySubflowCreated(Ptr<MpTcpSubflow> sf)
-{
-  NS_LOG_FUNCTION(this << sf);
-  if (!m_subflowCreated.IsNull ())
-  {
-      m_subflowCreated (sf);
-  }
-}
-
-void
-MpTcpMetaSocket::NotifySubflowConnected(Ptr<MpTcpSubflow> sf)
-{
-  NS_LOG_FUNCTION(this << sf);
-  if (!m_subflowConnectionSucceeded.IsNull ())
-    {
-      m_subflowConnectionSucceeded (sf);
-    }
-}
-
 //
 void
-MpTcpMetaSocket::SetSubflowAcceptCallback(
-//  Callback<void, Ptr<MpTcpSubflow> > connectionRequest,
-  Callback<bool, Ptr<MpTcpMetaSocket>, const Address &, const Address & > joinRequest,
-  Callback<void, Ptr<MpTcpSubflow> > connectionCreated
-)
+MpTcpMetaSocket::SetSubflowAcceptCallback(Callback<bool, Ptr<MpTcpMetaSocket>, const Address&, const Address&> joinRequest,
+                                          Callback<void, Ptr<MpTcpSubflow>, const Address&> connectionCreated)
 {
   NS_LOG_FUNCTION(this << &joinRequest << " " << &connectionCreated);
 //  NS_LOG_WARN("TODO not implemented yet");
 //  m_subflowConnectionSucceeded = connectionCreated;
   m_joinRequest = joinRequest;
-  m_subflowCreated = connectionCreated;
+  m_subflowConnectionCreated = connectionCreated;
 }
 
 void
-MpTcpMetaSocket::SetSubflowConnectCallback(
-  Callback<void, Ptr<MpTcpSubflow> > connectionSucceeded,
-  Callback<void, Ptr<MpTcpSubflow> > connectionFailure
-  )
+MpTcpMetaSocket::SetSubflowConnectCallback(Callback<void, Ptr<MpTcpSubflow> > connectionSucceeded,
+                                           Callback<void, Ptr<MpTcpSubflow> > connectionFailure)
 {
   NS_LOG_FUNCTION(this << &connectionSucceeded);
   m_subflowConnectionSucceeded = connectionSucceeded;
   m_subflowConnectionFailure = connectionFailure;
 }
-
-//void
-//MpTcpMetaSocket::SetJoinCreatedCallback(
-//  Callback<void, Ptr<MpTcpSubflow> > connectionCreated)
-//{
-//  NS_LOG_FUNCTION(this << &connectionCreated);
-//  m_subflowCreated = connectionCreated;
-//}
-
-
 
 TypeId
 MpTcpMetaSocket::GetInstanceTypeId(void) const
@@ -1681,7 +1652,7 @@ MpTcpMetaSocket::LastAckTimeout (void)
 
 //We've received a DATA_FIN from a peer.
 void
-MpTcpMetaSocket::PeerClose(SequenceNumber64 dsn, Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::PeerClose(const SequenceNumber64& dsn, Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_LOGIC("Datafin with seq=" << dsn);
   
