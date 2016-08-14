@@ -205,9 +205,10 @@ public:
   void CreateMasterSubflow ();
   
   /**
-   called by listening socket when receiving a new SYN with the MP_JOIN option.
+   called by listening subflow when receiving a new SYN with the MP_JOIN option.
    **/
-  virtual void NewSubflowJoinRequest(Ptr<Packet> p,
+  virtual void NewSubflowJoinRequest(Ptr<MpTcpSubflow> listenSubflow,
+                                     Ptr<Packet> p,
                                      const TcpHeader& header,
                                      const Address& fromAddress,
                                      const Address& toAddress,

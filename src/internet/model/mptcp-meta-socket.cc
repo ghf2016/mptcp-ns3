@@ -271,7 +271,8 @@ MpTcpMetaSocket::ConnectNewSubflow(const Address &local, const Address &remote)
 }
   
 void
-MpTcpMetaSocket::NewSubflowJoinRequest (Ptr<Packet> p,
+MpTcpMetaSocket::NewSubflowJoinRequest (Ptr<MpTcpSubflow> listenSubflow,
+                                        Ptr<Packet> p,
                                         const TcpHeader& tcpHeader,
                                         const Address& fromAddress,
                                         const Address& toAddress,
@@ -313,7 +314,9 @@ MpTcpMetaSocket::NewSubflowJoinRequest (Ptr<Packet> p,
     return;
   }
   
-  Ptr<MpTcpSubflow> subflow = CreateSubflow(false);
+  //Copy the listening subflow to get all the correct tcp parameters set
+  Ptr<MpTcpSubflow> subflow = CopyObject(listenSubflow);
+  subflow->SetMeta(this);
   AddSubflow (subflow, false);
   
   // Call it now so that endpoint gets allocated
@@ -764,6 +767,7 @@ MpTcpMetaSocket::AddSubflow(Ptr<MpTcpSubflow> sflow, bool isMaster)
   if(isMaster)
   {
     m_master = sflow;
+    sflow->SetMaster();
   }
   
   m_subflows.push_back(sflow);

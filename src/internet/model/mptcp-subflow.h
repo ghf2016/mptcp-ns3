@@ -73,12 +73,6 @@ public:
   static TypeId GetTypeId(void);
   
   virtual TypeId GetInstanceTypeId(void) const override;
-  
-  
-  /**
-   * Todo remove, exists in Socket ?
-   */
-  virtual uint32_t Window(void);               // Return the max possible number of unacked bytes
 
   /**
    * will update the meta rwnd. Called by subflows whose
@@ -87,16 +81,31 @@ public:
   virtual bool UpdateWindowSize (const TcpHeader& header);
 
   /**
-  \return Value advertised by the meta socket
-  */
-  virtual uint16_t
-  AdvertisedWindowSize(bool scale = true) const override;
-
-  /**
    * \param metaSocket
    */
   virtual void
   SetMeta(Ptr<MpTcpMetaSocket> metaSocket);
+  
+  /**
+   *
+   */
+  Ptr<MpTcpMetaSocket> GetMeta() const;
+  
+  /**
+   * Not implemented
+   * \return false
+   */
+  bool IsInfiniteMappingEnabled() const;
+  
+  /**
+   * Mapping is said "loose" because it is not tied to an SSN yet, this is the job
+   * of this function: it will look for the FirstUnmappedSSN() and map the DSN to it.
+   *
+   * Thus you should call it with increased dsn.
+   *
+   * \param dsnHead
+   */
+  Ptr<MpTcpMapping> AddLooseMapping(SequenceNumber64 dsnHead, uint16_t length);
 
   /**
   \warning for prototyping purposes, we let the user free to advertise an IP that doesn't belong to the node
@@ -128,8 +137,9 @@ public:
       during the 3WHS while any additionnal subflow must resort to the MP_JOIN option
   \return True if this subflow is the first (should be unique) subflow attempting to connect
   **/
-  virtual bool
-  IsMaster() const;
+  virtual bool IsMaster() const;
+  
+  virtual void SetMaster ();
 
   /**
   \return True if this subflow shall be used only when all the regular ones failed
@@ -195,7 +205,6 @@ public:
 
   /**
    * Parse DSS essentially
-
    */
 //  virtual int ProcessOptionMpTcpEstablished(const Ptr<const TcpOption> option);
   virtual void PreProcessOptionMpTcpDSS(Ptr<const TcpOptionMpTcpDSS> option);
@@ -281,30 +290,16 @@ protected:
    * Process an option after we call the main TCP functionality on receiving a segment
    */
   virtual void PostProcessOption(Ptr<const TcpOption> option) override;
-
-public:
-  /**
-   *
-   */
-  Ptr<MpTcpMetaSocket> GetMeta() const;
-
-  /**
-   * Not implemented
-   * \return false
-   */
-  bool IsInfiniteMappingEnabled() const;
+  
+  // Return the max possible number of unacked bytes. Note that we take the connection level rWnd into consideration
+  // not the subflow rWnd.
+  virtual uint32_t Window(void) const override;
   
   /**
-   * Mapping is said "loose" because it is not tied to an SSN yet, this is the job
-   * of this function: it will look for the FirstUnmappedSSN() and map the DSN to it.
-   *
-   * Thus you should call it with increased dsn.
-   *
-   * \param dsnHead
+   \return Value advertised by the meta socket
    */
-  Ptr<MpTcpMapping> AddLooseMapping(SequenceNumber64 dsnHead, uint16_t length);
-
-protected:
+  virtual uint16_t
+  AdvertisedWindowSize(bool scale = true) const override;
 
   //Override this to always set mptcp enabled to true
   virtual void SetMptcpEnabled (bool flag) override;
@@ -369,8 +364,6 @@ protected:
   MpTcpMappingContainer m_RxMappings;  //!< List of mappings to receive
 
 
-
-protected:
   Ptr<MpTcpMetaSocket> m_metaSocket;    //!< Meta
   virtual void SendPacket(TcpHeader header, Ptr<Packet> p);
 

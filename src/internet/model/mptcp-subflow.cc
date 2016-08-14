@@ -414,7 +414,7 @@ MpTcpSubflow::ProcessListen(Ptr<Packet> packet, const TcpHeader& tcpHeader, cons
     Ptr<MpTcpMetaSocket> meta = m_tcp->LookupMpTcpToken(joinOption->GetPeerToken());
     if(meta)
     {
-      meta->NewSubflowJoinRequest(packet, tcpHeader, fromAddress, toAddress, joinOption);
+      meta->NewSubflowJoinRequest(this, packet, tcpHeader, fromAddress, toAddress, joinOption);
     }
     else
     {
@@ -848,7 +848,11 @@ MpTcpSubflow::IsMaster() const
 {
   return m_masterSocket;
 }
-
+  
+void MpTcpSubflow::SetMaster ()
+{
+  m_masterSocket = true;
+}
 
 bool
 MpTcpSubflow::BackupSubflow() const
@@ -911,12 +915,37 @@ MpTcpSubflow::ReTxTimeout()
 bool
 MpTcpSubflow::UpdateWindowSize(const TcpHeader& header)
 {
-    bool updated = TcpSocketBase::UpdateWindowSize(header);
-    if(updated)
+  bool updated = TcpSocketBase::UpdateWindowSize(header);
+  if(updated)
+  {
+    /*
+     * From RFC 6824:
+     * The receive window is shared by all subflows and is relative to the Data
+     * ACK.  Because of this, an implementation MUST NOT use the RCV.WND
+     * field of a TCP segment at the connection level if it does not also
+     * carry a DSS option with a Data ACK field.
+     */
+    
+    //Note: if the connection is not established, we must consider the RCV.WND field of the SYN/SYN-ACK
+    //exchange in order to correctly initialize the connection level Rwnd.
+    if (!GetMeta()->FullyEstablished())
     {
-        GetMeta()->UpdateWindowSize(m_rWnd);
+      GetMeta()->UpdateWindowSize(m_rWnd);
     }
-    return updated;
+    else
+    {
+      Ptr<const TcpOptionMpTcpMain> option = GetMptcpOptionWithSubtype(header, TcpOptionMpTcpMain::MP_DSS);
+      if(option)
+      {
+        Ptr<const TcpOptionMpTcpDSS> dssOption = StaticCast<const TcpOptionMpTcpDSS>(option);
+        if(dssOption->GetFlags() & TcpOptionMpTcpDSS::DataAckPresent)
+        {
+          GetMeta()->UpdateWindowSize(m_rWnd);
+        }
+      }
+    }
+  }
+  return updated;
 }
 
 void
@@ -1193,7 +1222,7 @@ MpTcpSubflow::ReceivedData(Ptr<Packet> p, const TcpHeader& tcpHeader)
    */
   
 uint32_t
-MpTcpSubflow::Window (void)
+MpTcpSubflow::Window (void) const
 {
   NS_LOG_FUNCTION (this);
   //The size of the connection level (i.e. meta socket's) receive window
