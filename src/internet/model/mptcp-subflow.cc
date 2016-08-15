@@ -663,8 +663,15 @@ void
 MpTcpSubflow::ConnectionSucceeded(void)
 {
   NS_LOG_LOGIC(this << "Connection succeeded");
-  m_connected = true;
-  GetMeta()->ConnectionSucceeded(this);
+  if (m_masterSocket)
+  {
+    m_connected = true;
+    GetMeta()->ConnectionSucceeded(this);
+  }
+  else
+  {
+    TcpSocketBase::ConnectionSucceeded ();
+  }
 }
 
 /** Received a packet upon SYN_SENT */

@@ -1386,8 +1386,6 @@ MpTcpMetaSocket::SetSubflowAcceptCallback(Callback<bool, Ptr<MpTcpMetaSocket>, c
                                           Callback<void, Ptr<MpTcpSubflow>, const Address&> connectionCreated)
 {
   NS_LOG_FUNCTION(this << &joinRequest << " " << &connectionCreated);
-//  NS_LOG_WARN("TODO not implemented yet");
-//  m_subflowConnectionSucceeded = connectionCreated;
   m_joinRequest = joinRequest;
   m_subflowConnectionCreated = connectionCreated;
 }
