@@ -726,6 +726,10 @@ MpTcpMetaSocket::CreateSubflow(bool masterSocket)
   
   subflow->m_masterSocket = masterSocket;
   
+  //The close on empty flag should not be true for the subflows. The connection
+  // (i.e. meta socket) needs to send DATA_FIN before we close the subflows
+  subflow->m_tcpParams->m_closeOnEmpty = false;
+
   return subflow;
 }
 
