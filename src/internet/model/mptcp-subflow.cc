@@ -158,6 +158,7 @@ MpTcpSubflow::MpTcpSubflow(const MpTcpSubflow& sock)
   : TcpSocketBase(sock),
   m_masterSocket(sock.m_masterSocket),  //!false
   m_localNonce(sock.m_localNonce),
+  m_id(0),
   m_dssFlags(0),
   m_routeId(0),
   m_metaSocket(0),
@@ -174,6 +175,7 @@ MpTcpSubflow::MpTcpSubflow () :
     m_backupSubflow(false),
     m_masterSocket(false),
     m_localNonce(0),
+    m_id(0),
     m_dssFlags(0)
 {
   NS_LOG_FUNCTION(this);
@@ -441,6 +443,16 @@ MpTcpSubflow::GetMeta() const
 {
   NS_ASSERT(m_metaSocket);
   return m_metaSocket;
+}
+  
+void MpTcpSubflow::SetSubflowId (uint32_t subflowId)
+{
+  m_id = subflowId;
+}
+
+uint32_t MpTcpSubflow::GetSubflowId () const
+{
+  return m_id;
 }
 
 /*
@@ -837,8 +849,6 @@ bool MpTcpSubflow::CanSendPendingData (uint32_t transmitWindow)
   }
   
   return TcpSocketBase::CanSendPendingData(transmitWindow);
-  
-  Ptr<MpTcpMetaSocket> metaSocket = GetMeta();
 }
 
   

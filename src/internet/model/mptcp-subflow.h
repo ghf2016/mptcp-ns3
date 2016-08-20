@@ -91,6 +91,9 @@ public:
    */
   Ptr<MpTcpMetaSocket> GetMeta() const;
   
+  void SetSubflowId (uint32_t subflowId);
+  uint32_t GetSubflowId () const;
+  
   /**
    * Not implemented
    * \return false
@@ -144,8 +147,7 @@ public:
   /**
   \return True if this subflow shall be used only when all the regular ones failed
   */
-  virtual bool
-  BackupSubflow() const;
+  virtual bool BackupSubflow() const;
 
 
 //  virtual void
@@ -380,7 +382,7 @@ private:
 
   uint32_t m_localNonce;  //!< Store local host token, generated during the 3-way handshake
 
-  int m_prefixCounter;  //!< Temporary variable to help with prefix generation . To remove later
+  uint32_t m_id; //!<Subflow identifier, used for debug purposes
 
 };
 

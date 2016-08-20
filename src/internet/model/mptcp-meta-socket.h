@@ -52,6 +52,39 @@ class OutputStreamWrapper;
 
 using namespace std;
 
+/*
+ Packet tag to keep track of subflows ID's
+ */
+class MpTcpSubflowTag : public Tag {
+  
+public:
+  
+  MpTcpSubflowTag();
+  ~MpTcpSubflowTag();
+  
+  static TypeId GetTypeId (void);
+  TypeId GetInstanceTypeId (void) const;
+  
+  uint32_t GetSerializedSize (void) const;
+  void Serialize (TagBuffer i) const;
+  void Deserialize (TagBuffer i);
+  void Print (std::ostream &os) const;
+  
+  uint32_t GetSubflowId() const;
+  void SetSubflowId(uint32_t subflowId);
+  
+  uint32_t GetSourceToken () const;
+  void SetSourceToken (uint32_t token);
+  
+  uint32_t GetDestToken () const;
+  void SetDestToken (uint32_t token);
+  
+private:
+  uint32_t m_id;
+  uint32_t m_sourceToken;
+  uint32_t m_destToken;
+};
+  
 /**
 * \class MpTcpMetaSocket
 
@@ -63,28 +96,15 @@ Every data transfer happens on a subflow.
 Following the linux kernel from UCL (http://multipath-tcp.org) convention,
 the first established subflow is called the "master" subflow.
 
-This inherits MptcpSocketBase so that it can be  used as any other TCP variant:
-this is the backward compability feature that is required in RFC.
+This inherits from TcpSocketImpl so that it can be  used as any other TCP variant:
+this is the backward compability feature that is required in the RFC.
 Also doing so allows to run TCP tests with MPTCP via for instance the command
 Config::SetDefault ("ns3::TcpL4Protocol::SocketType", "ns3::MpTcpOlia");
 
-But to make sure some inherited functions are not improperly used, we need to redefine them so that they
-launch an assert. You can notice those via the comments "//! Disabled"
-
-As such many inherited (protected) functions are overriden & left empty.
-
-
 As in linux, the meta should return the m_endPoint information of the master,
 even if that subflow got closed during the MpTcpConnection.
-
-
-
-
-ConnectionSucceeded may be called twice; once when it goes to established
-and the second time when it sees
-Simulator::ScheduleNow(&MpTcpMetaSocket::ConnectionSucceeded, this);
  
- **/
+**/
 class MpTcpMetaSocket : public TcpSocketImpl
 
 {
@@ -676,6 +696,7 @@ protected: // protected methods
   bool     m_doChecksum;  //!< Compute the checksum. Negociated during 3WHS. Unused
   bool     m_receivedDSS;  //!< True if we received at least one DSS
   bool     m_connected;
+  bool     m_tagSubflows;  //!<Whether or not to add the subflow packet tag
   
   //!
   TypeId m_subflowTypeId;

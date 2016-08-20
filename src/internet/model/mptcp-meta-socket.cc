@@ -61,15 +61,90 @@ NS_LOG_COMPONENT_DEFINE("MpTcpMetaSocket");
 
 NS_OBJECT_ENSURE_REGISTERED(MpTcpMetaSocket);
 
-//
-//  void GetMapping (uint64_t& dsn, uint32_t& ssn, uint16_t& length) const;
-//
-//  /**
-//   * \brief
-//   * \param trunc_to_32bits Set to true to send a 32bit DSN
-//   * \warn Mapping can be set only once, otherwise it will crash ns3
-//   */
+NS_OBJECT_ENSURE_REGISTERED(MpTcpSubflowTag);
 
+/*
+ Subflow Tags
+ */
+
+MpTcpSubflowTag::MpTcpSubflowTag() :  m_id (0)
+  , m_sourceToken (0)
+  , m_destToken (0)
+
+{
+}
+
+MpTcpSubflowTag::~MpTcpSubflowTag()
+{
+}
+
+TypeId MpTcpSubflowTag::GetTypeId (void)
+{
+  static TypeId tid =TypeId("ns3::MpTcpSubflowTag")
+  .SetParent<Tag>()
+  .AddConstructor<MpTcpSubflowTag>();
+  
+  return tid;
+}
+
+TypeId MpTcpSubflowTag::GetInstanceTypeId (void) const
+{
+  return MpTcpSubflowTag::GetTypeId();
+}
+
+uint32_t MpTcpSubflowTag::GetSerializedSize (void) const
+{
+  return 3 * sizeof (uint32_t);
+}
+
+void MpTcpSubflowTag::Serialize (TagBuffer i) const
+{
+  i.WriteU32(m_id);
+  i.WriteU32(m_sourceToken);
+  i.WriteU32(m_destToken);
+}
+
+void MpTcpSubflowTag::Deserialize (TagBuffer i)
+{
+  m_id = i.ReadU32();
+  m_sourceToken = i.ReadU32();
+  m_destToken = i.ReadU32();
+}
+void MpTcpSubflowTag::Print (std::ostream &os) const
+{
+  os << "Subflow tag with id " << m_id << " source token "
+  << m_sourceToken << " dest token " << m_destToken;
+}
+
+uint32_t MpTcpSubflowTag::GetSubflowId() const
+{
+  return m_id;
+}
+
+void MpTcpSubflowTag::SetSubflowId(uint32_t subflowId)
+{
+  m_id = subflowId;
+}
+
+uint32_t MpTcpSubflowTag::GetSourceToken () const
+{
+  return m_sourceToken;
+}
+
+void MpTcpSubflowTag::SetSourceToken (uint32_t token)
+{
+  m_sourceToken = token;
+}
+
+uint32_t MpTcpSubflowTag::GetDestToken () const
+{
+  return m_destToken;
+}
+
+void MpTcpSubflowTag::SetDestToken (uint32_t token)
+{
+  m_destToken = token;
+}
 
 MpTcpMetaSocket::MpTcpMetaSocket() :  TcpSocketImpl()
                                     , m_remotePathIdManager(0)
@@ -83,6 +158,7 @@ MpTcpMetaSocket::MpTcpMetaSocket() :  TcpSocketImpl()
                                     , m_doChecksum(false)
                                     , m_receivedDSS(false)
                                     , m_connected (false)
+                                    , m_tagSubflows(false)
                                     , m_subflowTypeId(MpTcpSubflow::GetTypeId ())
                                     , m_schedulerTypeId(MpTcpSchedulerRoundRobin::GetTypeId())
                                     , m_rWnd(0)
@@ -126,6 +202,7 @@ MpTcpMetaSocket::MpTcpMetaSocket(const MpTcpMetaSocket& sock) : TcpSocketImpl(so
                                                               , m_doChecksum(sock.m_doChecksum)
                                                               , m_receivedDSS(false)
                                                               , m_connected (sock.m_connected)
+                                                              , m_tagSubflows(sock.m_tagSubflows)
                                                               , m_subflowTypeId(sock.m_subflowTypeId)
                                                               , m_schedulerTypeId(sock.m_schedulerTypeId)
                                                               , m_rWnd(0)
@@ -224,6 +301,11 @@ MpTcpMetaSocket::GetTypeId(void)
                  PointerValue (),
                  MakePointerAccessor (&MpTcpMetaSocket::GetRxBuffer),
                  MakePointerChecker<TcpRxBuffer64> ())
+  .AddAttribute ("TagSubflows",
+                 "Append a subflow tag to the packets.",
+                 BooleanValue (false),
+                 MakeBooleanAccessor (&MpTcpMetaSocket::m_tagSubflows),
+                 MakeBooleanChecker())
   // TODO rehabilitate
   //      .AddAttribute("SchedulingAlgorithm", "Algorithm for data distribution between m_subflows", EnumValue(Round_Robin),
   //          MakeEnumAccessor(&MpTcpMetaSocket::SetDataDistribAlgo),
@@ -726,8 +808,10 @@ MpTcpMetaSocket::CreateSubflow(bool masterSocket)
   
   subflow->m_masterSocket = masterSocket;
   
-  //The close on empty flag should not be true for the subflows. The connection
+  // The close on empty flag should not be true for the subflows. The connection
   // (i.e. meta socket) needs to send DATA_FIN before we close the subflows
+  // Also, the check to see if there is any remaining data should
+  // be performed on the connection level tx buffer.
   subflow->m_tcpParams->m_closeOnEmpty = false;
 
   return subflow;
@@ -774,6 +858,7 @@ MpTcpMetaSocket::AddSubflow(Ptr<MpTcpSubflow> sflow, bool isMaster)
     sflow->SetMaster();
   }
   
+  sflow->SetSubflowId(uint32_t(m_subflows.size()));
   m_subflows.push_back(sflow);
   
   if(sflow->GetState() == ESTABLISHED)
@@ -1052,6 +1137,16 @@ MpTcpMetaSocket::SendPendingData()
         NS_LOG_DEBUG ("CLOSE_WAIT -> LAST_ACK");
         m_state = MptcpMetaLastAck;
       }
+    }
+    
+    //Append the subflow tag if enabled
+    if (m_tagSubflows)
+    {
+      MpTcpSubflowTag sfTag;
+      sfTag.SetSubflowId(subflow->GetSubflowId());
+      sfTag.SetSourceToken(m_localToken);
+      sfTag.SetDestToken(m_peerToken);
+      p->AddPacketTag(sfTag);
     }
     
     int ret = subflow->Send(p, 0);
