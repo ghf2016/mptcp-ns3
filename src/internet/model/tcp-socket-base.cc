@@ -361,9 +361,9 @@ TcpSocketBase::MapIpToDevice (Ipv4Address addr) const
   {
     for (uint32_t a = 0; a < ipv4client->GetNAddresses(n); a++)
     {
-      NS_LOG_UNCOND( "Client addr " << n <<"/" << a << "=" << ipv4client->GetAddress(n,a));
+      //NS_LOG_UNCOND( "Client addr " << n <<"/" << a << "=" << ipv4client->GetAddress(n,a));
       if(addr ==ipv4client->GetAddress(n,a).GetLocal()) {
-        NS_LOG_UNCOND("EUREKA same ip=" << addr);
+        //NS_LOG_UNCOND("EUREKA same ip=" << addr);
         return m_node->GetDevice(n);
       }
     }

@@ -213,7 +213,6 @@ TcpL4Protocol::CreateSocket (Ptr<TcpCongestionOps> algo, TypeId socketTypeId)
   Ptr<RttEstimator> rtt = rttFactory.Create<RttEstimator> ();
   
   Ptr<TcpSocketImpl> socket;
-  NS_LOG_UNCOND( "socketTypeId=" << socketTypeId );
   
   socket = socketFactory.Create<TcpSocketImpl> ();
   
@@ -457,7 +456,6 @@ TcpL4Protocol::NoEndPointsFound (const TcpHeader &incomingHeader,
 Ptr<MpTcpMetaSocket>
 TcpL4Protocol::LookupMpTcpToken (uint32_t token)
 {
-
   if (m_mptcpMetaSockets.find(token) == m_mptcpMetaSockets.end())
   {
     return nullptr;
@@ -466,40 +464,6 @@ TcpL4Protocol::LookupMpTcpToken (uint32_t token)
   {
     return m_mptcpMetaSockets[token];
   }
-
-  //! We should find the token
-    NS_LOG_INFO("Looking for token=" << token << " among " << m_sockets.size() << " sockets ");
-
-    /* We go through all the metas to find one with the correct token */
-  for(std::vector<Ptr<TcpSocketImpl>>::iterator it = m_sockets.begin(); it != m_sockets.end(); it++)
-    {
-          Ptr<TcpSocketImpl> sock = *it;
-          Ptr<MpTcpMetaSocket> meta = DynamicCast<MpTcpMetaSocket>(sock);
-          Address addr;
-          (*it)->GetSockName(addr);
-          NS_LOG_DEBUG("Socket : " << sock
-                << " socket of type=" << sock->GetInstanceTypeId());
-          if(!meta)
-          {
-            NS_LOG_DEBUG("Conversion failed: " << sock << " is not an mptcp socket");
-            continue;
-          }
-
-          NS_LOG_DEBUG("Conversion succeeded: " << sock << " is an mptcp socket. Comparing "
-                        "meta->GetLocalToken()=" << meta->GetLocalToken() << " and token="<<  token);
-          if(meta->GetLocalToken() == token)
-          {
-              NS_LOG_DEBUG("Found match " << &meta);
-              return meta;
-
-    //        NS_LOG_DEBUG("Token " << meta->GetToken() << " differ from MP_JOIN token " << join->GetPeerToken());
-    //        continue;
-          }
-
-
-    }
-
-    return 0;
 }
   
 void TcpL4Protocol::AddTokenMapping(uint32_t token, Ptr<MpTcpMetaSocket> meta)
@@ -799,8 +763,6 @@ bool
 TcpL4Protocol::AddSocket (Ptr<TcpSocketBase> socket)
 {
   NS_LOG_FUNCTION(socket);
-  // TODO remove afterwards
-  DumpSockets();
 
   std::vector<Ptr<TcpSocketImpl>>::iterator it = std::find(m_sockets.begin(), m_sockets.end(), socket);
   if (it == m_sockets.end())
