@@ -984,7 +984,6 @@ SequenceNumber64 MpTcpMetaSocket::GetNextTxSequence() const
 
 /**
  * Sending data via subflows with available window size.
- * Todo somehow rename to dispatch
  * we should not care about IsInfiniteMapping()
  */
 bool
@@ -1206,7 +1205,7 @@ MpTcpMetaSocket::DoRetransmit()
 void
 MpTcpMetaSocket::SendDataFin(bool withAck)
 {
-  //TODO: get a subflow from the scheduler (need mapping?)
+  //Get a subflow from the scheduler
   Ptr<MpTcpSubflow> subflow = m_scheduler->GetAvailableControlSubflow();
   
   NS_ASSERT(subflow);
@@ -1658,7 +1657,6 @@ MpTcpMetaSocket::PeerClose(const SequenceNumber64& dsn, Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_LOGIC("Datafin with seq=" << dsn);
   
-  // TODO the range check should be generalized somewhere else
   if(dsn < m_rxBuffer->NextRxSequence() || m_rxBuffer->MaxRxSequence() < dsn)
   {
     NS_LOG_INFO("dsn " << dsn << " out of expected range [ " << m_rxBuffer->NextRxSequence()  << " - " << m_rxBuffer->MaxRxSequence() << " ]" );
@@ -1749,15 +1747,7 @@ MpTcpMetaSocket::DoPeerClose(Ptr<MpTcpSubflow> sf)
 int
 MpTcpMetaSocket::DoClose()
 {
-  
   NS_LOG_FUNCTION(this << " in state " << TcpStateName[m_state]);
-
-  // TODO close all subflows
-  // TODO send a data fin
-  // TODO ideally we should be able to work without any subflows and
-  // retransmit as soon as we get a subflow up !
-  // TODO we should ask the scheduler on what subflow to send the messages
-  TcpHeader header;
 
   switch (m_state)
   {
