@@ -156,7 +156,7 @@ MpTcpSubflow::Close(void)
 // Does this constructor even make sense ? no ? to remove ?
 MpTcpSubflow::MpTcpSubflow(const MpTcpSubflow& sock)
   : TcpSocketBase(sock),
-  m_masterSocket(sock.m_masterSocket),  //!false
+  m_masterSocket(false),  //!always set to false, should be explicitly set later
   m_localNonce(sock.m_localNonce),
   m_id(0),
   m_dssFlags(0),
@@ -490,7 +490,7 @@ void
 MpTcpSubflow::AddMpTcpOptions (TcpHeader& header)
 {
   NS_LOG_FUNCTION(this);
-  // TODO look for the mapping
+
   if((header.GetFlags () & TcpHeader::SYN))
   {
     AddOptionMpTcp3WHS (header);
