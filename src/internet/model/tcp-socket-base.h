@@ -199,10 +199,6 @@ public:
    */
   TcpSocketBase (const TcpSocketBase& sock);
   virtual ~TcpSocketBase (void);
-
-  // Set associated Node, TcpL4Protocol, RttEstimator to this socket
-  
-  Ptr<NetDevice> MapIpToDevice (Ipv4Address) const;
   
   /**
    * \brief Set the first Tx byte not acknowledged yet

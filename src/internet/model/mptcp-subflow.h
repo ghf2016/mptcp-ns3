@@ -126,6 +126,10 @@ public:
   */
   virtual bool
   StopAdvertisingAddress(Ipv4Address);
+  
+  virtual int Bind (void) override;
+  virtual int Bind6 (void) override;
+  virtual int Bind (const Address &address) override;
 
   /**
    * for debug
@@ -305,6 +309,10 @@ protected:
 
   //Override this to always set mptcp enabled to true
   virtual void SetMptcpEnabled (bool flag) override;
+  
+  //Find net device with given address
+  Ptr<NetDevice> MapIpv4ToDevice (Ipv4Address) const;
+  Ptr<NetDevice> MapIpv6ToDevice (Ipv6Address) const;
   
   /////////////////////////////////////////////
   //// DSS Mapping handling

@@ -680,7 +680,7 @@ void InstallOnOffApplications(NodeContainer& servers, NodeContainer& clients,
   int portNum = 4000;
   Address remoteAddress(InetSocketAddress(peer, portNum));
   
-  Ptr<Application> mpOnOff = CreateApplication(remoteAddress, DataRate("15Mbps"), packetSize);
+  Ptr<Application> mpOnOff = CreateApplication(remoteAddress, DataRate("10Mbps"), packetSize);
   servers.Get(0)->AddApplication(mpOnOff);
   
   PacketSinkHelper packetSink("ns3::MpTcpSocketFactory", remoteAddress);
@@ -883,7 +883,7 @@ int main(int argc, char* argv[])
   ConfigureTracing(outputDir, clients, switches, servers);
   
   //Set the simulator stop time
-  Simulator::Stop (Seconds(120.0));
+  Simulator::Stop (Seconds(20.0));
   
   //Begin the simulation
   Simulator::Run ();

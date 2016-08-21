@@ -37,6 +37,8 @@
 #include "ns3/ipv4-address.h"
 #include "ipv4-end-point.h"
 #include "ipv6-end-point.h" // it is not exported in ns3.19
+#include "ipv4.h"
+#include "ipv6.h"
 #include "ns3/node.h"
 #include "ns3/ptr.h"
 #include "tcp-option-mptcp.h"
@@ -1032,6 +1034,119 @@ Ptr<const TcpOptionMpTcpMain> MpTcpSubflow::GetMptcpOptionWithSubtype (const Tcp
   }
   return nullptr;
 
+}
+
+Ptr<NetDevice>
+MpTcpSubflow::MapIpv4ToDevice (Ipv4Address addr) const
+{
+  NS_LOG_DEBUG(addr);
+  cout << addr << endl;
+  Ptr<Ipv4> ipv4client = m_node->GetObject<Ipv4>();
+
+  for (uint32_t n = 0; n < ipv4client->GetNInterfaces(); n++)
+  {
+    for (uint32_t a = 0; a < ipv4client->GetNAddresses(n); a++)
+    {
+      //NS_LOG_UNCOND( "Client addr " << n <<"/" << a << "=" << ipv4client->GetAddress(n,a));
+      if(addr ==ipv4client->GetAddress(n,a).GetLocal()) {
+        //NS_LOG_UNCOND("EUREKA same ip=" << addr);
+        return m_node->GetDevice(n);
+      }
+    }
+  }
+  return nullptr;
+}
+
+Ptr<NetDevice>
+MpTcpSubflow::MapIpv6ToDevice (Ipv6Address addr) const
+{
+  NS_LOG_DEBUG(addr);
+  cout << addr << endl;
+  Ptr<Ipv6> ipv6client = m_node->GetObject<Ipv6>();
+
+  for (uint32_t n = 0; n < ipv6client->GetNInterfaces(); n++)
+  {
+    for (uint32_t a = 0; a < ipv6client->GetNAddresses(n); a++)
+    {
+      //NS_LOG_UNCOND( "Client addr " << n <<"/" << a << "=" << ipv4client->GetAddress(n,a));
+      if(addr ==ipv6client->GetAddress(n,a).GetAddress()) {
+        //NS_LOG_UNCOND("EUREKA same ip=" << addr);
+        return m_node->GetDevice(n);
+      }
+    }
+  }
+  return nullptr;
+}
+
+int
+MpTcpSubflow::Bind (const Address &address)
+{
+  NS_LOG_FUNCTION (this << address);
+
+  int result = TcpSocketBase::Bind(address);
+
+  if (InetSocketAddress::IsMatchingType (address) && result ==0)
+  {
+
+    Ptr<NetDevice> dev = MapIpv4ToDevice(m_endPoint->GetLocalAddress());
+
+    if(dev) {
+      m_endPoint->BindToNetDevice(dev);
+      m_boundnetdevice = dev;
+    }
+  }
+  else if (Inet6SocketAddress::IsMatchingType (address))
+  {
+    Ptr<NetDevice> dev = MapIpv6ToDevice(m_endPoint6->GetLocalAddress());
+
+    if(dev) {
+      m_endPoint6->BindToNetDevice(dev);
+      m_boundnetdevice = dev;
+    }
+  }
+
+  return result;
+}
+
+int
+MpTcpSubflow::Bind (void)
+{
+  if(IsMaster())
+  {
+    //For now, we cannot just bind to any address. The master socket must be bound to the address
+    //of the first interface.
+    Ptr<Ipv4> ipv4 = m_node->GetObject<Ipv4>();
+    NS_ASSERT(ipv4->GetNInterfaces() >= 2);
+    Ipv4Address address = ipv4->GetAddress(1, 0).GetLocal();
+
+    return Bind(InetSocketAddress(address, 0));
+  }
+  else
+  {
+    NS_FATAL_ERROR("Should not call Bind without any address argument for secondary subflows.");
+    return 0;
+  }
+}
+
+int
+MpTcpSubflow::Bind6()
+{
+  NS_LOG_FUNCTION (this);
+  if (IsMaster())
+  {
+    //For now, we cannot just bind to any address. The master socket must be bound to the address
+    //of the first interface.
+    Ptr<Ipv6> ipv6 = m_node->GetObject<Ipv6>();
+    NS_ASSERT(ipv6->GetNInterfaces() >= 2);
+    Ipv6Address address = ipv6->GetAddress(1, 0).GetAddress();
+
+    return Bind(Inet6SocketAddress(address, 0));
+  }
+  else
+  {
+    NS_FATAL_ERROR("Should not call Bind without any address argument for secondary subflows.");
+    return 0;
+  }
 }
 
 Ptr<Packet>

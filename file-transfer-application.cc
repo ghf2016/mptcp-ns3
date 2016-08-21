@@ -85,7 +85,7 @@ namespace ns3
         m_socket->Bind ();
       }
       
-      m_nextLocalAddress = 1;
+      m_nextLocalAddress = 2;
       
       m_socket->SetConnectCallback (MakeCallback (&FileTransferApplication::ConnectionSucceeded, this),
                                     MakeCallback (&FileTransferApplication::ConnectionFailed, this));
@@ -169,7 +169,7 @@ namespace ns3
     Ptr<Ipv4> ipv4 = GetNode()->GetObject<Ipv4>();
     NS_ASSERT(ipv4);
     
-    if(m_nextLocalAddress < ipv4->GetNInterfaces() - 1)
+    if(m_nextLocalAddress < ipv4->GetNInterfaces())
     {
       //Try to create a new subflow
       Ipv4Address localAddress = ipv4->GetAddress(m_nextLocalAddress, 0).GetLocal();

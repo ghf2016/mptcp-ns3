@@ -351,26 +351,6 @@ TcpSocketBase::Bind (void)
   return SetupCallback ();
 }
 
-Ptr<NetDevice>
-TcpSocketBase::MapIpToDevice (Ipv4Address addr) const
-{
-  NS_LOG_DEBUG(addr);
-  Ptr<Ipv4> ipv4client = m_node->GetObject<Ipv4>();
-  
-  for (uint32_t n = 0; n < ipv4client->GetNInterfaces(); n++)
-  {
-    for (uint32_t a = 0; a < ipv4client->GetNAddresses(n); a++)
-    {
-      //NS_LOG_UNCOND( "Client addr " << n <<"/" << a << "=" << ipv4client->GetAddress(n,a));
-      if(addr ==ipv4client->GetAddress(n,a).GetLocal()) {
-        //NS_LOG_UNCOND("EUREKA same ip=" << addr);
-        return m_node->GetDevice(n);
-      }
-    }
-  }
-  return nullptr;
-}
-
 int
 TcpSocketBase::Bind6 (void)
 {
@@ -419,13 +399,6 @@ TcpSocketBase::Bind (const Address &address)
           m_errno = port ? ERROR_ADDRINUSE : ERROR_ADDRNOTAVAIL;
           return -1;
         }
-      
-      Ptr<NetDevice> dev = MapIpToDevice (m_endPoint->GetLocalAddress());
-      
-      if(dev) {
-        m_endPoint->BindToNetDevice(dev);
-        m_boundnetdevice = m_endPoint->GetBoundNetDevice();
-      }
     }
   else if (Inet6SocketAddress::IsMatchingType (address))
     {
