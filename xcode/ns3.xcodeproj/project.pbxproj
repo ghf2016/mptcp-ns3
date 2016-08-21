@@ -674,6 +674,9 @@
 		ED8883771CED105500EDA1E9 /* libcore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDE065F01604E5E700E183C8 /* libcore.dylib */; };
 		ED89B21D1D5E290000781CD0 /* mptcp-scheduler-fastest-rtt.h in Headers */ = {isa = PBXBuildFile; fileRef = EDEB0E5F1D10A05B00F0C233 /* mptcp-scheduler-fastest-rtt.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED89B21E1D5E290800781CD0 /* mptcp-scheduler-fastest-rtt.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDEB0E5E1D10A05B00F0C233 /* mptcp-scheduler-fastest-rtt.cc */; };
+		ED89B2211D63AFCA00781CD0 /* mp-onoff-application.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED89B21F1D63AFCA00781CD0 /* mp-onoff-application.cc */; };
+		ED8E6C221D6A043B00DEEF28 /* file-transfer-application.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED8E6C1E1D6A043B00DEEF28 /* file-transfer-application.cc */; };
+		ED8E6C231D6A043B00DEEF28 /* file-transfer-helper.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED8E6C201D6A043B00DEEF28 /* file-transfer-helper.cc */; };
 		ED91DA781D217C3700A69097 /* mptcp-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED91DA771D217C1700A69097 /* mptcp-test.cc */; };
 		EDC1D83F1D58B07200DD1D64 /* tcp-parameters.cc in Sources */ = {isa = PBXBuildFile; fileRef = EDC1D83B1D58B07200DD1D64 /* tcp-parameters.cc */; };
 		EDC1D8401D58B07200DD1D64 /* tcp-parameters.h in Headers */ = {isa = PBXBuildFile; fileRef = EDC1D83C1D58B07200DD1D64 /* tcp-parameters.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -3973,6 +3976,12 @@
 		ED7C6B36199D00A5009165B6 /* core-config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "core-config.h"; path = "../build/ns3/core-config.h"; sourceTree = "<group>"; };
 		ED7C6B37199D00A5009165B6 /* core-module.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "core-module.h"; path = "../build/ns3/core-module.h"; sourceTree = "<group>"; };
 		ED88837D1CED105500EDA1E9 /* background */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = background; sourceTree = BUILT_PRODUCTS_DIR; };
+		ED89B21F1D63AFCA00781CD0 /* mp-onoff-application.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "mp-onoff-application.cc"; path = "../mp-onoff-application.cc"; sourceTree = "<group>"; };
+		ED89B2201D63AFCA00781CD0 /* mp-onoff-application.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "mp-onoff-application.h"; path = "../mp-onoff-application.h"; sourceTree = "<group>"; };
+		ED8E6C1E1D6A043B00DEEF28 /* file-transfer-application.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "file-transfer-application.cc"; path = "../file-transfer-application.cc"; sourceTree = "<group>"; };
+		ED8E6C1F1D6A043B00DEEF28 /* file-transfer-application.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "file-transfer-application.h"; path = "../file-transfer-application.h"; sourceTree = "<group>"; };
+		ED8E6C201D6A043B00DEEF28 /* file-transfer-helper.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "file-transfer-helper.cc"; path = "../file-transfer-helper.cc"; sourceTree = "<group>"; };
+		ED8E6C211D6A043B00DEEF28 /* file-transfer-helper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "file-transfer-helper.h"; path = "../file-transfer-helper.h"; sourceTree = "<group>"; };
 		ED91DA771D217C1700A69097 /* mptcp-test.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = "mptcp-test.cc"; path = "../mptcp-test.cc"; sourceTree = "<group>"; };
 		EDC1D83B1D58B07200DD1D64 /* tcp-parameters.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-parameters.cc"; sourceTree = "<group>"; };
 		EDC1D83C1D58B07200DD1D64 /* tcp-parameters.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "tcp-parameters.h"; sourceTree = "<group>"; };
@@ -9699,6 +9708,12 @@
 		ED7C6D2D199E330E009165B6 /* run */ = {
 			isa = PBXGroup;
 			children = (
+				ED8E6C1E1D6A043B00DEEF28 /* file-transfer-application.cc */,
+				ED8E6C1F1D6A043B00DEEF28 /* file-transfer-application.h */,
+				ED8E6C201D6A043B00DEEF28 /* file-transfer-helper.cc */,
+				ED8E6C211D6A043B00DEEF28 /* file-transfer-helper.h */,
+				ED89B21F1D63AFCA00781CD0 /* mp-onoff-application.cc */,
+				ED89B2201D63AFCA00781CD0 /* mp-onoff-application.h */,
 				ED91DA771D217C1700A69097 /* mptcp-test.cc */,
 			);
 			name = run;
@@ -10605,6 +10620,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ED89B2211D63AFCA00781CD0 /* mp-onoff-application.cc in Sources */,
+				ED8E6C221D6A043B00DEEF28 /* file-transfer-application.cc in Sources */,
+				ED8E6C231D6A043B00DEEF28 /* file-transfer-helper.cc in Sources */,
 				ED91DA781D217C3700A69097 /* mptcp-test.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
