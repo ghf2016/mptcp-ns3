@@ -402,7 +402,7 @@ void ConfigureTracing (const string& outputDir, const NodeContainer& clients,
   CheckAndCreateDirectory(outputDir);
   
   stringstream devicePath;
-  devicePath << "/NodeList/" << clients.Get(0)->GetId() << "/DeviceList/1/$ns3::PointToPointNetDevice/";
+  devicePath << "/NodeList/" << clients.Get(0)->GetId() << "/DeviceList/*/$ns3::PointToPointNetDevice/";
   
   stringstream tfile;
   tfile << outputDir << "/mptcp_client";
@@ -416,10 +416,6 @@ void ConfigureTracing (const string& outputDir, const NodeContainer& clients,
   uint32_t serverId = servers.Get(0)->GetId();
   devicePath.str("");
   devicePath << "/NodeList/" << serverId << "/DeviceList/*/$ns3::PointToPointNetDevice/";
-  
-  //Config::Set(devicePath.str() + "TxQueue/MinTh", DoubleValue(bdpBytes * 2 * 0.8));
-  //Config::Set(devicePath.str() + "TxQueue/MaxTh", DoubleValue(bdpBytes * 2));
-  //Config::Set(devicePath.str() + "TxQueue/QueueLimit", UintegerValue(bdpBytes * 2));
   
   stringstream sfile;
   sfile << outputDir << "/mptcp_server";
@@ -445,13 +441,18 @@ void ConfigureTracing (const string& outputDir, const NodeContainer& clients,
   cout << "client node is " << clientId << " switch id " << switchId << " server id " << serverId << endl;
   
   //Print the nodes' routing tables
-  PrintRoutingTable(switches.Get(0), outputDir, "switch");
-  PrintRoutingTable(clients.Get(0), outputDir, "cl");
-  PrintRoutingTable(servers.Get(0), outputDir, "srv");
-  
-  if(servers.GetN() > 1)
+  //Print the nodes' routing tables
+  for (uint32_t  i = 0; i < switches.GetN(); ++i)
   {
-    PrintRoutingTable(servers.Get(1), outputDir, "srv2");
+    PrintRoutingTable(switches.Get(i), outputDir, "switch" + to_string(i));
+  }
+  for(uint32_t i = 0; i < clients.GetN(); ++i)
+  {
+    PrintRoutingTable(clients.Get(i), outputDir, "cl" + to_string(i));
+  }
+  for(uint32_t i = 0; i < servers.GetN(); ++i)
+  {
+    PrintRoutingTable(servers.Get(i), outputDir, "srv" + to_string(i));
   }
 }
 
@@ -531,7 +532,7 @@ void CreateMultipleFlowsNoBottleneck (uint32_t interfaceCount,
   clients.Create(1);
   stackHelper.Install(clients);
   
-  switches.Create(1);
+  switches.Create(interfaceCount);
   stackHelper.Install(switches);
   
   //Create the servers and install the internet stack on them
@@ -550,7 +551,7 @@ void CreateMultipleFlowsNoBottleneck (uint32_t interfaceCount,
   for(uint32_t i = 0; i < interfaceCount; ++i)
   {
     //Create a link between the switch and the server, assign IP addresses
-    NetDeviceContainer devices = PointToPointCreate(servers.Get(0), switches.Get(0),
+    NetDeviceContainer devices = PointToPointCreate(servers.Get(0), switches.Get(i),
                                                     DataRate(linkRate.GetBitRate()), delay, packetSize);
     Ipv4InterfaceContainer interfaces = addressHelper.Assign(devices);
     
@@ -561,7 +562,7 @@ void CreateMultipleFlowsNoBottleneck (uint32_t interfaceCount,
   for(uint32_t i = 0; i < interfaceCount; ++i)
   {
     //Create a link between the switch and the client, assign IP addresses
-    NetDeviceContainer linkedDevices = PointToPointCreate(clients.Get(0), switches.Get(0),
+    NetDeviceContainer linkedDevices = PointToPointCreate(clients.Get(0), switches.Get(i),
                                                           DataRate(linkRate.GetBitRate()), delay, packetSize);
     Ipv4InterfaceContainer interfaces = addressHelper.Assign(linkedDevices);
     
@@ -574,9 +575,29 @@ void CreateMultipleFlowsNoBottleneck (uint32_t interfaceCount,
   //We should do static routing, because we'd like to explicitly create 2 different paths through
   //the switch.
   PopulateServerRoutingTable(servers.Get(0), clientInterfaces, switchClientInterfaces, switchServerInterfaces);
-  PopulateSwitchRoutingTable(switches.Get(0), clientInterfaces, serverInterfaces,
-                             switchClientInterfaces, switchServerInterfaces);
   PopulateClientRoutingTable(clients.Get(0), serverInterfaces, switchClientInterfaces, switchServerInterfaces);
+  
+  //Do the switches manually
+  for (uint32_t i =0; i < interfaceCount; ++i)
+  {
+    Ptr<Node> aSwitch = switches.Get(i);
+    Ptr<Ipv4StaticRouting> routing = GetNodeStaticRoutingProtocol(aSwitch);
+    
+    //Routes to the server interfaces facing the server
+    routing->AddHostRouteTo(serverInterfaces.GetAddress(i),
+                            serverInterfaces.GetAddress(i), 1);
+    
+    //Routes to the client
+    for(uint32_t j = 0; j < clientInterfaces.GetN(); ++j)
+    {
+      routing->AddHostRouteTo(clientInterfaces.GetAddress(j), clientInterfaces.GetAddress(j), 2);
+    }
+    
+    Ptr<Node> aServer = servers.Get(0);
+    routing = GetNodeStaticRoutingProtocol(aServer);
+    routing->AddHostRouteTo(clientInterfaces.GetAddress(0), switchServerInterfaces.GetAddress(i), i + 1);
+  }
+
 }
 
 void CreateMultipleAndTcpFlows (uint32_t interfaceCount,
@@ -683,7 +704,9 @@ void InstallOnOffApplications(NodeContainer& servers, NodeContainer& clients,
   Ptr<Application> mpOnOff = CreateApplication(remoteAddress, DataRate("10Mbps"), packetSize);
   servers.Get(0)->AddApplication(mpOnOff);
   
-  PacketSinkHelper packetSink("ns3::MpTcpSocketFactory", remoteAddress);
+  //PacketSinkHelper packetSink("ns3::MpTcpSocketFactory", remoteAddress);
+  Address portAddress(InetSocketAddress(Ipv4Address::GetAny(), portNum));
+  PacketSinkHelper packetSink("ns3::MpTcpSocketFactory", portAddress);
   packetSink.Install(clients);
   
   if (servers.GetN() == 2)
@@ -713,7 +736,9 @@ void InstallFileTransferApplications(NodeContainer& servers, NodeContainer& clie
   
   fileHelper.Install(servers.Get(0));
   
-  PacketSinkHelper packetSink("ns3::MpTcpSocketFactory", remoteAddress);
+  //PacketSinkHelper packetSink("ns3::MpTcpSocketFactory", remoteAddress);
+  Address portAddress(InetSocketAddress(Ipv4Address::GetAny(), portNum));
+  PacketSinkHelper packetSink("ns3::MpTcpSocketFactory", portAddress);
   packetSink.Install(clients);
   
   if (servers.GetN() == 2)
@@ -816,12 +841,20 @@ int main(int argc, char* argv[])
       
       /*
        * Server has two possible paths to client.
+       * Note that two switches are necessary to make
+       * this work without the ADD_ADDR capabilities implemented
+       * Also the packet sink bound endpoint has Ipv4Address::GetAny()
        *
        ------           ------           ------
       |      | ------  |      | ------  |      |
+      |      |         |      |         |      |
+      |      |          ------          |      |
+      |      |          Switch1         |      |
+      |      |          ------          |      |
       |      | ------  |      | ------  |      |
+      |      |         |      |         |      |
        ------           ------           ------
-       Server           Switch           Client
+       Server           Switch2          Client
        *
        */
       CreateMultipleFlowsNoBottleneck(interfaceCount, segmentSizeWithoutHeaders,
