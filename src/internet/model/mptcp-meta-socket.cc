@@ -346,8 +346,9 @@ MpTcpMetaSocket::ConnectNewSubflow(const Address &local, const Address &remote)
   AddSubflow(sf, false);
 
   // TODO account for this error as well ?
-  NS_ASSERT(sf->Bind(local) == 0);
-  int ret = sf->Connect(remote);
+  int ret = sf->Bind(local);
+  NS_ASSERT(ret == 0);
+  ret = sf->Connect(remote);
 
   return ret;
 }
