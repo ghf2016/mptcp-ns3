@@ -313,10 +313,7 @@ MpTcpSubflow::SendPacket(TcpHeader header, Ptr<Packet> p)
     /// TODO : just moved from SendDataPacket.
     ///============================
       SequenceNumber32 ssnHead = header.GetSequenceNumber();
-//      SequenceNumber32 ssnTail = ssnHead + SequenceNumber32(p->GetSize())-1;
 
-    
-      // TODO
       Ptr<MpTcpMapping> mapping = m_TxMappings.GetMappingForSSN(ssnHead);
       if(!mapping)
       {
@@ -356,10 +353,15 @@ MpTcpSubflow::SendDataPacket(TcpHeader& header, SequenceNumber32 ssnHead, uint32
 //      NS_ASSERT_MSG(mapping.TailSSN() >= ssnHead +p->GetSize() -1, "mapping should cover the whole packet" );
 
       AppendDSSMapping(mapping);
-    ///============================
-
-//  }
-//  #error TODO copy some commands from TcpSocketBase
+  
+  //Check to see if we need to enable the DATA_FIN option, i.e. this is the last packet and close on empty is true.
+  //The following code catches the case when we need to retransmit a data packet which had a DATA_FIN.
+  Ptr<MpTcpMetaSocket> meta = GetMeta();
+  uint32_t remainingData = meta->GetTxBuffer()->SizeFromSequence(mapping->HeadDSN() + mapping->GetLength());
+  if (meta->m_tcpParams->m_closeOnEmpty && (remainingData == 0))
+  {
+    AppendDSSFin();
+  }
 
   // Here we set the maxsize to the size of the mapping
   return TcpSocketBase::SendDataPacket(header, ssnHead, std::min((int)maxSize,mapping->TailSSN()-ssnHead+1));

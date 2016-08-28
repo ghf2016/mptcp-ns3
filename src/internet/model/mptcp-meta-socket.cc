@@ -1801,7 +1801,7 @@ MpTcpMetaSocket::PeerClose(const SequenceNumber64& dsn, Ptr<MpTcpSubflow> sf)
 void
 MpTcpMetaSocket::DoPeerClose(Ptr<MpTcpSubflow> sf)
 {
-  NS_ASSERT (m_state == MptcpMetaEstablished || m_state == SYN_RCVD);
+  NS_ASSERT (m_state == MptcpMetaEstablished || (m_state == MptcpMetaPreEstablished && sf->m_state == SYN_RCVD));
   
   // Move the state to CLOSE_WAIT
   NS_LOG_DEBUG (TcpStateName[m_state] << " -> CLOSE_WAIT");
