@@ -1267,6 +1267,9 @@ MpTcpSubflow::ReceivedData(Ptr<Packet> p, const TcpHeader& tcpHeader)
     return;
   }
   
+  // Put into Rx buffer
+  SequenceNumber32 expectedSSN = m_rxBuffer->NextRxSequence();
+  
   //First, add the packet to the subflow level receive buffer. We need to do this first so that
   //ACKs sent have the correct SSN.
   if (!m_rxBuffer->Add(p, tcpHeader.GetSequenceNumber()))
@@ -1292,9 +1295,6 @@ MpTcpSubflow::ReceivedData(Ptr<Packet> p, const TcpHeader& tcpHeader)
     AppendDSSAck();
     SendEmptyPacket(TcpHeader::ACK);
   }
-
-  // Put into Rx buffer
-  SequenceNumber32 expectedSSN = m_rxBuffer->NextRxSequence();
 
   // Size() = Get the actual buffer occupancy
   if (m_rxBuffer->Size() > m_rxBuffer->Available() /* Out of order packets exist in buffer */
@@ -1417,6 +1417,8 @@ MpTcpSubflow::PreProcessOptionMpTcpDSS(Ptr<const TcpOptionMpTcpDSS> dss)
                                                         dss->GetMappingLength());
     if(!mapping)
     {
+      //We hit this when we time out after a loss, and retransmit something which has already
+      //been received.
       NS_LOG_WARN("Could not insert mapping: It already exists.");
       NS_LOG_UNCOND("Dumping Rx mappings...");
       m_RxMappings.Dump();
