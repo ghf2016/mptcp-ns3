@@ -1122,24 +1122,6 @@ MpTcpMetaSocket::SendPendingData()
     //Send packet on subflow right away
     Ptr<Packet> p = m_txBuffer->CopyFromSequence(length, m_nextTxSequence);
     
-    //If we have no remaining data to send, set the DATA_FIN flag
-    uint32_t remainingData = m_txBuffer->SizeFromSequence(m_nextTxSequence + length);
-    if (m_tcpParams->m_closeOnEmpty && (remainingData == 0))
-    {
-      subflow->AppendDSSFin();
-      
-      if (m_state == MptcpMetaEstablished)
-      { // On active close: I am the first one to send FIN
-        NS_LOG_DEBUG ("ESTABLISHED -> FIN_WAIT_1");
-        m_state = MptcpMetaFinWait1;
-      }
-      else if (m_state == MptcpMetaCloseWait)
-      { // On passive close: Peer sent me FIN already
-        NS_LOG_DEBUG ("CLOSE_WAIT -> LAST_ACK");
-        m_state = MptcpMetaLastAck;
-      }
-    }
-    
     //Append the subflow tag if enabled
     if (m_tagSubflows)
     {
