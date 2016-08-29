@@ -354,15 +354,9 @@ MpTcpSubflow::SendDataPacket(TcpHeader& header, SequenceNumber32 ssnHead, uint32
 
       AppendDSSMapping(mapping);
   
-  //Check to see if we need to enable the DATA_FIN option, i.e. this is the last packet and close on empty is true.
-  //The following code catches the case when we need to retransmit a data packet which had a DATA_FIN.
-  Ptr<MpTcpMetaSocket> meta = GetMeta();
-  uint32_t remainingData = meta->GetTxBuffer()->SizeFromSequence(mapping->HeadDSN() + mapping->GetLength());
-  if (meta->m_tcpParams->m_closeOnEmpty && (remainingData == 0))
-  {
-    AppendDSSFin();
-  }
-
+  //Check to see if we need to add the DATA_FIN option, i.e. this is the last packet and close on empty is true.
+  GetMeta()->CheckAndAppendDataFin(this, ssnHead, maxSize, mapping);
+  
   // Here we set the maxsize to the size of the mapping
   return TcpSocketBase::SendDataPacket(header, ssnHead, std::min((int)maxSize,mapping->TailSSN()-ssnHead+1));
 }

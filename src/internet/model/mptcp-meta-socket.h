@@ -463,6 +463,12 @@ protected: // protected methods
   
   virtual void CancelAllEvents ();
   
+  //Called from a subflow to append a DATA_FIN to a data packet if there is no remaining data, and
+  //close on empty is enabled
+  //Changes the state
+  virtual bool CheckAndAppendDataFin (Ptr<MpTcpSubflow> subflow, SequenceNumber32 ssn,
+                                      uint32_t length, Ptr<MpTcpMapping> mapping);
+  
   /**
    * Should be called after having receiving a Data ACK in response to a sent DataFIN
    * Should send a RST on all subflows in state Other

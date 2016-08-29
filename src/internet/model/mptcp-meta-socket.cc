@@ -1930,6 +1930,34 @@ MpTcpMetaSocket::CloseAllSubflows()
     sf->Close();
   }
 }
+  
+bool MpTcpMetaSocket::CheckAndAppendDataFin (Ptr<MpTcpSubflow> subflow,
+                                             SequenceNumber32 ssn,
+                                             uint32_t length, Ptr<MpTcpMapping> mapping)
+{
+  //Map the ssn to a dsn
+  SequenceNumber64 dsn = mapping->GetDSNFromSSN(ssn);
+  //If we have no remaining data to send, set the DATA_FIN flag
+  uint32_t remainingData = m_txBuffer->SizeFromSequence(dsn + length);
+  if (m_tcpParams->m_closeOnEmpty && (remainingData == 0))
+  {
+    subflow->AppendDSSFin();
+    
+    if (m_state == MptcpMetaEstablished)
+    { // On active close: I am the first one to send FIN
+      NS_LOG_DEBUG ("ESTABLISHED -> FIN_WAIT_1");
+      m_state = MptcpMetaFinWait1;
+    }
+    else if (m_state == MptcpMetaCloseWait)
+    { // On passive close: Peer sent me FIN already
+      NS_LOG_DEBUG ("CLOSE_WAIT -> LAST_ACK");
+      m_state = MptcpMetaLastAck;
+    }
+    return true;
+  }
+  
+  return false;
+}
 
 
 /** Kill this socket. This is a callback function configured to m_endpoint in
