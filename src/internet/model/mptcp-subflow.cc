@@ -310,22 +310,23 @@ MpTcpSubflow::SendPacket(TcpHeader header, Ptr<Packet> p)
     //... we must decide to send a mapping or not
     // For now we always append the mapping but we could have mappings spanning over several packets.
     // and thus not add the mapping for several packets
-    /// TODO : just moved from SendDataPacket.
     ///============================
-      SequenceNumber32 ssnHead = header.GetSequenceNumber();
-
-      Ptr<MpTcpMapping> mapping = m_TxMappings.GetMappingForSSN(ssnHead);
-      if(!mapping)
-      {
-        m_TxMappings.Dump();
-        NS_FATAL_ERROR("Could not find mapping associated to ssn");
-      }
-      NS_ASSERT_MSG(mapping->TailSSN() >= ssnHead +p->GetSize() -1, "mapping should cover the whole packet" );
-
-      AppendDSSMapping(mapping);
-      // For now we append the data ack everytime
-      AppendDSSAck();
-    ///============================
+    SequenceNumber32 ssnHead = header.GetSequenceNumber();
+    
+    Ptr<MpTcpMapping> mapping = m_TxMappings.GetMappingForSSN(ssnHead);
+    if(!mapping)
+    {
+      m_TxMappings.Dump();
+      NS_FATAL_ERROR("Could not find mapping associated to ssn");
+    }
+    NS_ASSERT_MSG(mapping->TailSSN() >= ssnHead +p->GetSize() -1, "mapping should cover the whole packet" );
+    
+    AppendDSSMapping(mapping);
+    // For now we append the data ack everytime
+    AppendDSSAck();
+    
+    //Check to see if we need to add the DATA_FIN option, i.e. this is the last packet and close on empty is true.
+    GetMeta()->CheckAndAppendDataFin(this, ssnHead, p->GetSize(), mapping);
 
   }
   
@@ -350,15 +351,9 @@ MpTcpSubflow::SendDataPacket(TcpHeader& header, SequenceNumber32 ssnHead, uint32
         m_TxMappings.Dump();
         NS_FATAL_ERROR("Could not find mapping associated to ssn");
       }
-//      NS_ASSERT_MSG(mapping.TailSSN() >= ssnHead +p->GetSize() -1, "mapping should cover the whole packet" );
-
-      AppendDSSMapping(mapping);
-  
-  //Check to see if we need to add the DATA_FIN option, i.e. this is the last packet and close on empty is true.
-  GetMeta()->CheckAndAppendDataFin(this, ssnHead, maxSize, mapping);
   
   // Here we set the maxsize to the size of the mapping
-  return TcpSocketBase::SendDataPacket(header, ssnHead, std::min((int)maxSize,mapping->TailSSN()-ssnHead+1));
+  return TcpSocketBase::SendDataPacket(header, ssnHead, std::min(maxSize, (uint32_t)mapping->GetLength()));
 }
 
 
