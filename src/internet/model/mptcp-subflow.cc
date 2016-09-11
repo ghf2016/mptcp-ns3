@@ -1228,22 +1228,13 @@ MpTcpSubflow::AppendDSSFin()
 }
   
 /**
- The subflow looks for an associated mapping.
-
-ProcessEstablished
-
-If there is not, then I discard the stuff
-std::ostream& ns3::operator<<(std::ostream&,const ns3::TcpOptionMptcpMain&)
-
-TODO I should also notify the meta, maybe with an enum saying if it's new data/old etc...
+ Add the received data to the Subflow level rx buffer, and meta socket rx buffer.
 */
+  
 void
 MpTcpSubflow::ReceivedData(Ptr<Packet> p, const TcpHeader& tcpHeader)
 {
   NS_LOG_FUNCTION (this << tcpHeader);
-  
-  // Following was moved to ReceivedAck sincethis is from there that ReceivedData can
-  // be called
 
   Ptr<MpTcpMapping> mapping = m_RxMappings.GetMappingForSSN(tcpHeader.GetSequenceNumber());
   bool sendAck = false;
@@ -1323,10 +1314,6 @@ MpTcpSubflow::ReceivedData(Ptr<Packet> p, const TcpHeader& tcpHeader)
     AppendDSSAck();
     SendEmptyPacket(TcpHeader::ACK);
   }
-
-  // TODO handle out of order case look at parent's member.
-  // TODO pass subflow id to the function
-  // TODO if that acknowledges a full mapping then transfer it to  the metasock
 }
 
   /*
@@ -1415,16 +1402,16 @@ MpTcpSubflow::PreProcessOptionMpTcpDSS(Ptr<const TcpOptionMpTcpDSS> dss)
       m_RxMappings.Dump();
     }
   }
-}
   
-void MpTcpSubflow::PostProcessOptionMpTcpDSS(Ptr<const TcpOptionMpTcpDSS> dss)
-{
   if((dss->GetFlags() & TcpOptionMpTcpDSS::DataAckPresent))
   {
     //    NS_LOG_DEBUG("DataAck detected");
     GetMeta()->ReceivedAck(this, dss->GetDataAck());
   }
+}
   
+void MpTcpSubflow::PostProcessOptionMpTcpDSS(Ptr<const TcpOptionMpTcpDSS> dss)
+{
   if (dss->GetFlags() & TcpOptionMpTcpDSS::DataFin)
   {
     NS_LOG_LOGIC("Data FIN detected " << dss->GetDataFinDSN());

@@ -984,35 +984,21 @@ MpTcpMetaSocket::NewAck(Ptr<MpTcpSubflow> subflow, const SequenceNumber64& dsn)
    An MPTCP sender MUST NOT free data from the send buffer until it has
    been acknowledged by both a Data ACK received on any subflow and at
    the subflow level by all subflows on which the data was sent.
+   
+   The above is only true if the subflows don't keep a copy of the full packet in their tx buffers,
+   but rather a pointer to the packet in the connection level tx buffer. Therefore, for our purposes
+   it is safe to delete the packet from the connection, and let subflows deal with managing their own
+   tx buffers.
    */
-  
-  SequenceNumber64 discard = dsn;
-  
-  //Check the head of each active subflow's tx buffer
-  for(SubflowList::iterator it = m_activeSubflows.begin(); it != m_activeSubflows.end(); ++it)
-  {
-    Ptr<MpTcpSubflow> s = *it;
-    Ptr<TcpTxBuffer32> subflowTxBuffer = s->GetTxBuffer();
-    
-    SequenceNumber32 subflowHead = subflowTxBuffer->HeadSequence();
-    Ptr<MpTcpMapping> subflowMapping = s->m_TxMappings.GetMappingForSSN(subflowHead);
-    
-    //If mapping doesn't exist, we either never sent these bytes on the current subflow,
-    //or we've received the subflow level ack already and discarded the mapping.
-    if(subflowMapping)
-    {
-      discard = min(discard, subflowMapping->GetDSNFromSSN(subflowHead));
-    }
-  }
   
   /*
    DiscardUpTo  Discard data up to but not including this sequence number.
    */
-  m_txBuffer->DiscardUpTo(discard);
+  m_txBuffer->DiscardUpTo(dsn);
   
-  if (discard > m_nextTxSequence)
+  if (dsn > m_nextTxSequence)
   {
-    m_nextTxSequence = discard; // If advanced
+    m_nextTxSequence = dsn; // If advanced
   }
   
   if (GetTxAvailable() > 0)
