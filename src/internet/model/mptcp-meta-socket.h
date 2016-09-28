@@ -308,6 +308,8 @@ public:
   virtual void SetSubflowConnectCallback(Callback<void, Ptr<MpTcpSubflow> > connectionSucceeded,
                                          Callback<void, Ptr<MpTcpSubflow> > connectionFailure);
   
+  virtual void SetSubflowAddedCallback(Callback<void, Ptr<MpTcpSubflow>, bool> subflowAdded);
+  
   static void
   NotifySubflowUpdateCwnd(Ptr<MpTcpMetaSocket> meta,
                           Ptr<MpTcpSubflow> sf,
@@ -661,8 +663,9 @@ protected: // protected methods
   
   Callback<void, Ptr<MpTcpSubflow> > m_subflowConnectionSucceeded;  //!< connection succeeded callback
   Callback<void, Ptr<MpTcpSubflow> > m_subflowConnectionFailure;    //!< connection failed callback
-  Callback<void, Ptr<MpTcpSubflow>, const Address&> m_subflowConnectionCreated; //!< connection created callback
+  Callback<void, Ptr<MpTcpSubflow>, const Address&> m_subflowConnectionCreated; //!< subflow created as a result of SYN request
   Callback<bool, Ptr<MpTcpMetaSocket>, const Address&, const Address&> m_joinRequest;    //!< connection request callback
+  Callback<void, Ptr<MpTcpSubflow>, bool> m_subflowAdded; //!<subflow added to the meta socket, after it is created
   //  Callback<void, Ptr<Socket> >                   m_normalClose;          //!< connection closed callback
   //  Callback<void, Ptr<Socket> >                   m_errorClose;           //!< connection closed due to errors callback
   

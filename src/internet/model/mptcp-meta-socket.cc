@@ -186,6 +186,7 @@ MpTcpMetaSocket::MpTcpMetaSocket() :  TcpSocketImpl()
   
   m_subflowConnectionSucceeded  = MakeNullCallback<void, Ptr<MpTcpSubflow> >();
   m_subflowConnectionFailure    = MakeNullCallback<void, Ptr<MpTcpSubflow> >();
+  m_subflowAdded = MakeNullCallback<void, Ptr<MpTcpSubflow>, bool> ();
   
   m_tcpParams->m_mptcpEnabled = true;
 }
@@ -217,6 +218,7 @@ MpTcpMetaSocket::MpTcpMetaSocket(const MpTcpMetaSocket& sock) : TcpSocketImpl(so
                                                               , m_subflowConnectionFailure(sock.m_subflowConnectionFailure)
                                                               , m_joinRequest(sock.m_joinRequest)
                                                               , m_subflowConnectionCreated(sock.m_subflowConnectionCreated)
+                                                              , m_subflowAdded(sock.m_subflowAdded)
                                                               , m_sendPendingDataEvent ()
                                                               , m_retxEvent ()
                                                               , m_lastAckEvent()
@@ -273,6 +275,7 @@ MpTcpMetaSocket::~MpTcpMetaSocket(void)
   m_subflowConnectionCreated = MakeNullCallback<void, Ptr<MpTcpSubflow>, const Address&>();
   m_joinRequest = MakeNullCallback<bool, Ptr<MpTcpMetaSocket>, const Address&, const Address&>();
   m_connectionFullyEstablished = MakeNullCallback<void, Ptr<MpTcpMetaSocket>>();
+  m_subflowAdded = MakeNullCallback<void, Ptr<MpTcpSubflow>, bool> ();
 }
   
 TypeId
@@ -377,8 +380,6 @@ MpTcpMetaSocket::NewSubflowJoinRequest (Ptr<MpTcpSubflow> listenSubflow,
     NS_LOG_WARN("Received an MP_JOIN while meta not fully established yet.");
     return;
   }
-  
-  
   
   //! TODO here we should trigger a callback to say if we accept the connection or not
   // (and create a helper that acts as a path manager)
@@ -541,15 +542,9 @@ uint32_t MpTcpMetaSocket::GetNSubflows () const
 void
 MpTcpMetaSocket::SetPeerKey(uint64_t remoteKey)
 {
-//  NS_ASSERT( m_peerKey == 0);
-//  NS_ASSERT( m_state != CLOSED);
   uint64_t idsn = 0;
   m_peerKey = remoteKey;
-
-  // not  sure yet. Wait to see if SYN/ACK is acked
-//  NS_LOG_DEBUG("Peer key set to " << );
-
-// TODO use the one  from mptcp-crypo.h
+  
   GenerateTokenForKey(HMAC_SHA1, m_peerKey, m_peerToken, idsn);
 
   NS_LOG_DEBUG("Peer key/token set to " << m_peerKey << "/" << m_peerToken);
@@ -865,6 +860,11 @@ MpTcpMetaSocket::AddSubflow(Ptr<MpTcpSubflow> sflow, bool isMaster)
   if(sflow->GetState() == ESTABLISHED)
   {
     m_activeSubflows.push_back(sflow);
+  }
+  
+  if(!m_subflowAdded.IsNull())
+  {
+    m_subflowAdded(sflow, isMaster);
   }
 }
 
@@ -1464,6 +1464,13 @@ MpTcpMetaSocket::SetSubflowConnectCallback(Callback<void, Ptr<MpTcpSubflow> > co
   NS_LOG_FUNCTION(this << &connectionSucceeded);
   m_subflowConnectionSucceeded = connectionSucceeded;
   m_subflowConnectionFailure = connectionFailure;
+}
+  
+void
+MpTcpMetaSocket::SetSubflowAddedCallback(Callback<void, Ptr<MpTcpSubflow>, bool> subflowAdded)
+{
+  NS_LOG_FUNCTION(this << &subflowAdded);
+  m_subflowAdded = subflowAdded;
 }
 
 TypeId
