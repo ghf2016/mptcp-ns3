@@ -447,7 +447,7 @@ protected: // protected methods
    \param finalDsn
    OnDataFin
    */
-  virtual void PeerClose(const SequenceNumber64& dsn, Ptr<MpTcpSubflow> sf);
+  virtual void PeerClose(const SequenceNumber64& dsn, const SequenceNumber64& dack, Ptr<MpTcpSubflow> sf);
   
   /* called by subflow when it sees a DSS with the DATAFIN flag
    // DATA FIN is in sequence, notify app and respond with a Data ACK
@@ -470,6 +470,9 @@ protected: // protected methods
    */
   virtual void SendDataFin(bool withAck);
   
+  //Sends a single DATA_ACK on given subflow
+  virtual void SendDataAck (Ptr<MpTcpSubflow> sf);
+
   virtual void CancelAllEvents ();
   
   //Called from a subflow to append a DATA_FIN to a data packet if there is no remaining data, and

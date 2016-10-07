@@ -1424,7 +1424,13 @@ void MpTcpSubflow::PostProcessOptionMpTcpDSS(Ptr<const TcpOptionMpTcpDSS> dss)
   if (dss->GetFlags() & TcpOptionMpTcpDSS::DataFin)
   {
     NS_LOG_LOGIC("Data FIN detected " << dss->GetDataFinDSN());
-    GetMeta()->PeerClose(SequenceNumber32(dss->GetDataFinDSN()), this);
+    
+    SequenceNumber64 dack;
+    if (dss->GetFlags() & TcpOptionMpTcpDSS::DataAckPresent)
+    {
+      dack = dss->GetDataAck();
+    }
+    GetMeta()->PeerClose(SequenceNumber32(dss->GetDataFinDSN()), dack, this);
   }
 }
 

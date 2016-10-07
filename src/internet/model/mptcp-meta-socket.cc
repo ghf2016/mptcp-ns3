@@ -1300,6 +1300,16 @@ MpTcpMetaSocket::SendDataFin(bool withAck)
 }
 
 void
+MpTcpMetaSocket::SendDataAck (Ptr<MpTcpSubflow> sf)
+{
+  //Send a Data Ack
+  TcpHeader header;
+  sf->GenerateEmptyPacketHeader(header, TcpHeader::ACK);
+  sf->AppendDSSAck();
+  sf->SendEmptyPacket(header);
+}
+
+void
 MpTcpMetaSocket::ReTxTimeout()
 {
   NS_LOG_FUNCTION(this);
@@ -1729,7 +1739,7 @@ MpTcpMetaSocket::LastAckTimeout (void)
 
 //We've received a DATA_FIN from a peer.
 void
-MpTcpMetaSocket::PeerClose(const SequenceNumber64& dsn, Ptr<MpTcpSubflow> sf)
+MpTcpMetaSocket::PeerClose(const SequenceNumber64& dsn, const SequenceNumber64& dack, Ptr<MpTcpSubflow> sf)
 {
   NS_LOG_LOGIC("Datafin with seq=" << dsn);
   
@@ -1756,19 +1766,26 @@ MpTcpMetaSocket::PeerClose(const SequenceNumber64& dsn, Ptr<MpTcpSubflow> sf)
   {
     NS_LOG_DEBUG ("FIN_WAIT_1 -> CLOSING");
     m_state = MptcpMetaClosing;
-    return;
+    
+    //Send a Data Ack
+    SendDataAck(sf);
+    
+    if (m_txBuffer->Size () == 0 && (dack == m_highTxMark + SequenceNumber32 (1)))
+    {
+      CloseAllSubflows();
+      TimeWait();
+    }
   }
   else if (m_state == MptcpMetaFinWait2)
   {
-    TcpHeader header;
-    sf->GenerateEmptyPacketHeader(header, TcpHeader::ACK);
-    sf->AppendDSSAck();
-    sf->SendEmptyPacket(header);
+    //Send a Data Ack
+    SendDataAck(sf);
     TimeWait();
-    return;
   }
-  
-  DoPeerClose (sf); // Change state, respond with ACK
+  else
+  {
+    DoPeerClose (sf); // Change state, respond with ACK
+  }
   
 }
   
@@ -1800,11 +1817,8 @@ MpTcpMetaSocket::DoPeerClose(Ptr<MpTcpSubflow> sf)
     Close ();
   }
   else if (m_state == MptcpMetaCloseWait) //The state could have changed due to the notify close callback
-  { // Need to ack, the application will close later
-    TcpHeader header;
-    sf->GenerateEmptyPacketHeader(header, TcpHeader::ACK);
-    sf->AppendDSSAck();
-    sf->SendEmptyPacket(header);
+  { // Need to Data ACK, the application will close later
+    SendDataAck(sf);
   }
   if (m_state == MptcpMetaLastAck)
   {
