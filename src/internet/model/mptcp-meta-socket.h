@@ -147,6 +147,13 @@ public:
    */
   bool UpdateWindowSize (uint32_t windowSize);
   
+  /*
+   * Whether or not to append a subflow tag to the outgoing packets
+   */
+  
+  bool GetTagSubflows () const;
+  void SetTagSubflows (bool value);
+  
   /*********************************************
    * Interface methods inherited from Socket
    *********************************************/

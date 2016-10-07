@@ -307,7 +307,8 @@ MpTcpMetaSocket::GetTypeId(void)
   .AddAttribute ("TagSubflows",
                  "Append a subflow tag to the packets.",
                  BooleanValue (false),
-                 MakeBooleanAccessor (&MpTcpMetaSocket::m_tagSubflows),
+                 MakeBooleanAccessor (&MpTcpMetaSocket::SetTagSubflows,
+                                      &MpTcpMetaSocket::GetTagSubflows),
                  MakeBooleanChecker())
   // TODO rehabilitate
   //      .AddAttribute("SchedulingAlgorithm", "Algorithm for data distribution between m_subflows", EnumValue(Round_Robin),
@@ -324,6 +325,16 @@ MpTcpMetaSocket::GetTypeId(void)
   return tid;
 }
 
+bool MpTcpMetaSocket::GetTagSubflows () const
+{
+  return m_tagSubflows;
+}
+
+void MpTcpMetaSocket::SetTagSubflows (bool value)
+{
+  m_tagSubflows = value;
+}
+  
 void
 MpTcpMetaSocket::CreateScheduler(TypeId schedulerTypeId)
 {
@@ -1107,16 +1118,6 @@ MpTcpMetaSocket::SendPendingData()
     
     //Send packet on subflow right away
     Ptr<Packet> p = m_txBuffer->CopyFromSequence(length, m_nextTxSequence);
-    
-    //Append the subflow tag if enabled
-    if (m_tagSubflows)
-    {
-      MpTcpSubflowTag sfTag;
-      sfTag.SetSubflowId(subflow->GetSubflowId());
-      sfTag.SetSourceToken(m_localToken);
-      sfTag.SetDestToken(m_peerToken);
-      p->AddPacketTag(sfTag);
-    }
     
     int ret = subflow->Send(p, 0);
     

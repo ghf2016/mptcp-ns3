@@ -303,7 +303,16 @@ MpTcpSubflow::SendPacket(TcpHeader header, Ptr<Packet> p)
   NS_LOG_FUNCTION (this << header <<  p);
   // TODO here we should decide if we call AppendMapping or not and with which value
 
-
+  //Append the subflow tag if enabled
+  if (m_metaSocket->GetTagSubflows())
+  {
+    MpTcpSubflowTag sfTag;
+    sfTag.SetSubflowId(GetSubflowId());
+    sfTag.SetSourceToken(m_metaSocket->GetLocalToken());
+    sfTag.SetDestToken(m_metaSocket->GetPeerToken());
+    p->AddPacketTag(sfTag);
+  }
+  
   //! if we send data...
   if(p->GetSize() && !IsInfiniteMappingEnabled())
   {
