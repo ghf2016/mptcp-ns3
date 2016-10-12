@@ -253,22 +253,8 @@ MpTcpMetaSocket::~MpTcpMetaSocket(void)
   {
 
   }
-  /*
-   * Upon Bind, an Ipv4Endpoint is allocated and set to m_endPoint, and
-   * DestroyCallback is set to TcpSocketBase::Destroy. If we called
-   * m_tcp->DeAllocate, it will destroy its Ipv4EndpointDemux::DeAllocate,
-   * which in turn destroys my m_endPoint, and in turn invokes
-   * TcpSocketBase::Destroy to nullify m_node, m_endPoint, and m_tcp.
-   */
-//  if (m_endPoint != 0)
-//    {
-//      NS_ASSERT(m_tcp != 0);
-//      m_tcp->DeAllocate(m_endPoint);
-//      NS_ASSERT(m_endPoint == 0);
-//    }
-//  m_tcp = 0;
-//  CancelAllSubflowTimers();
-//  NS_LOG_INFO(Simulator::Now().GetSeconds() << " ["<< this << "] ~MpTcpMetaSocket ->" << m_tcp );
+  
+  CancelAllEvents();
 
   m_subflowConnectionSucceeded = MakeNullCallback<void, Ptr<MpTcpSubflow> >();
   m_subflowConnectionFailure = MakeNullCallback<void, Ptr<MpTcpSubflow>>();
@@ -311,9 +297,6 @@ MpTcpMetaSocket::GetTypeId(void)
                                       &MpTcpMetaSocket::GetTagSubflows),
                  MakeBooleanChecker())
   // TODO rehabilitate
-  //      .AddAttribute("SchedulingAlgorithm", "Algorithm for data distribution between m_subflows", EnumValue(Round_Robin),
-  //          MakeEnumAccessor(&MpTcpMetaSocket::SetDataDistribAlgo),
-  //          MakeEnumChecker(Round_Robin, "Round_Robin"))
   //      .AddAttribute("Subflows", "The list of subflows associated to this protocol.",
   //          ObjectVectorValue(),
   //          MakeObjectVectorAccessor(&MpTcpMetaSocket::m_subflows),
@@ -339,11 +322,8 @@ void
 MpTcpMetaSocket::CreateScheduler(TypeId schedulerTypeId)
 {
   NS_LOG_FUNCTION(this);
-  NS_LOG_WARN("Overriding scheduler choice");
   ObjectFactory schedulerFactory;
-//  schedulerTypeId = MpTcpSchedulerFastestRTT;
-  schedulerTypeId = MpTcpSchedulerRoundRobin::GetTypeId();
-  schedulerFactory.SetTypeId(schedulerTypeId);
+  schedulerFactory.SetTypeId(m_schedulerTypeId);
   m_scheduler = schedulerFactory.Create<MpTcpScheduler>();
   m_scheduler->SetMeta(this);
 }
@@ -1393,9 +1373,6 @@ MpTcpMetaSocket::SetNewAddrCallback(Callback<bool, Ptr<Socket>, Address, uint8_t
   m_onRemoteAddAddr = remoteAddAddrCb;
   m_onAddrDeletion = remoteRemAddrCb;
 }
-
-
-
 
 void
 MpTcpMetaSocket::DumpSubflows() const

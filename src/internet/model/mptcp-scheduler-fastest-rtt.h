@@ -40,46 +40,20 @@ class MpTcpSchedulerFastestRTT : public MpTcpScheduler
 {
 
 public:
-  static TypeId
-  GetTypeId (void);
+  static TypeId GetTypeId (void);
 
   MpTcpSchedulerFastestRTT();
   virtual ~MpTcpSchedulerFastestRTT ();
 
-
-  void SetMeta(Ptr<MpTcpMetaSocket> metaSock);
-
   /**
-   * \brief This function is responsible for generating a list of packets to send
-   *   and to specify on which subflow to send.
-   *
-   *   These *mappings* will be passed on to the meta socket that will send them without altering the
-   *   mappings.
-   *   It is of utmost importance to generate a perfect mapping !!! Any deviation
-   *   from the foreseen mapping will trigger an error and crash the simulator
-   *
-   * \warn This function MUST NOT fiddle with metasockInternal
-   * subflowId: pair(start,size)
-   *
-   * TODO should take into account backup priorities of subflows
+   Return available subflow with lowest RTT
    */
-  virtual bool GenerateMapping(int& activeSubflowArrayId, SequenceNumber64& dsn, uint16_t& length);
-
-  /**
-   * \return -1 if could not find a valid subflow, the subflow id otherwise
-   */
-  virtual int FindFastestSubflowWithFreeWindow() const;
-
-  /**
-  Return Index of subflow to use
-  */
-  virtual Ptr<MpTcpSubflow> GetAvailableControlSubflow();
+  virtual Ptr<MpTcpSubflow> GetAvailableControlSubflow() override;
   
-  virtual Ptr<MpTcpSubflow> GetAvailableSubflow (uint32_t dataToSend, uint32_t metaWindow);
+  virtual Ptr<MpTcpSubflow> GetAvailableSubflow (uint32_t dataToSend, uint32_t metaWindow) override;
 
 protected:
 //  uint8_t  m_lastUsedFlowId;        //!< keep track of last used subflow
-  Ptr<MpTcpMetaSocket> m_metaSock;  //!<
 };
 
 

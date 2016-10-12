@@ -38,61 +38,37 @@ class MpTcpMapping;
 class MpTcpSubflow;
 
 /**
- * This class is responsible for
+ * This class is responsible for selecting the available subflow to schedule the next MSS on.
  *
  * The mptcp linux 0.90 scheduler is composed of mainly 2 functions:
  * -get_available_subflow
  * -get_next_segment
  *
-* Here we wanted to let a maximum number of possibilities for testing, for instance:
-* - you can generate DSS for data that is not in the meta Tx buffer yet (in order to minimize the number of DSS sent).
-* - you can send the
-*
-* The scheduler maps a dsn range to a subflow. It does not map the dsn to an ssn: this is done
-* by the subflow when it actually receives the Tx data.
-*
-* \warn The decoupling between dsn & ssn mapping may prove hard to debug. There are
-* some checks but you should be especially careful when writing a new scheduler.
  */
 class MpTcpScheduler : public Object
 {
 
 public:
 
+  MpTcpScheduler () : m_metaSock(0)
+  {
+  }
+  
   virtual ~MpTcpScheduler() {}
-//  static TypeId
-//  GetTypeId (void);
-//TypeId
-//MpTcpScheduler::GetTypeId (void)
-//{
-//  static TypeId tid = TypeId ("ns3::MpTcpSchedulerRoundRobin")
-//    .SetParent<Object> ()
-//    //
-//    .AddConstructor<MpTcpScheduler> ()
-//  ;
-//  return tid;
-//}
 
-  /**
-   * \param activeSubflowArrayId
-   * \param uint16_t
-   * \return true if could generate a mapping
-   * \see MptcpMetaSocket::SendPendingData
-   */
-  virtual bool GenerateMapping(int& activeSubflowArrayId, SequenceNumber64& dsn, uint16_t& length) = 0;
-
-  virtual void SetMeta(Ptr<MpTcpMetaSocket> metaSock) = 0;
+  virtual void SetMeta(Ptr<MpTcpMetaSocket> metaSock)
+  {
+    NS_ASSERT(metaSock);
+    m_metaSock = metaSock;
+  }
   
   virtual Ptr<MpTcpSubflow> GetAvailableSubflow (uint32_t dataToSend, uint32_t metaWindow) = 0;
   
   //Get subflow to send empty control packets on, e.g. DATA_FIN.
   virtual Ptr<MpTcpSubflow> GetAvailableControlSubflow () = 0;
   
-  /**
-  \brief
-  \return Subflow on which to send
-  **/
-//  virtual Ptr<MpTcpSubflow> GetSubflowToUse(Ptr<MptcpMetaSocket> metaSock);
+protected:
+  Ptr<MpTcpMetaSocket> m_metaSock;  //!<A pointer back to the owning meta socket.
 
 };
 
