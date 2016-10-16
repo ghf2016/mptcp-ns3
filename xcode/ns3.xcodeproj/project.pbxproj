@@ -250,6 +250,7 @@
 		ED61C62F199CE9AA00839C45 /* unix-fd-reader.h in Headers */ = {isa = PBXBuildFile; fileRef = ED61BBB0199CD60F00839C45 /* unix-fd-reader.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED61C630199CE9B000839C45 /* unix-fd-reader.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED61BBAF199CD60F00839C45 /* unix-fd-reader.cc */; };
 		ED61C631199CE9B800839C45 /* unix-system-condition.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED61BBB1199CD60F00839C45 /* unix-system-condition.cc */; };
+		ED6A1BDE1DB3D5990001A515 /* mptcp-scheduler.cc in Sources */ = {isa = PBXBuildFile; fileRef = ED6A1BDD1DB3D5990001A515 /* mptcp-scheduler.cc */; };
 		ED6E22071C5D23D100028B56 /* libinternet.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EDC7CFDD16051D0900ECD480 /* libinternet.dylib */; };
 		ED6E22081C5D244300028B56 /* tcp-error-model.h in Headers */ = {isa = PBXBuildFile; fileRef = ED6E21E71C5D136F00028B56 /* tcp-error-model.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ED6E22091C5D244400028B56 /* tcp-general-test.h in Headers */ = {isa = PBXBuildFile; fileRef = ED6E21EB1C5D136F00028B56 /* tcp-general-test.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -3914,6 +3915,7 @@
 		ED61C5A0199CD66400839C45 /* wifi-wired-bridging.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "wifi-wired-bridging.cc"; sourceTree = "<group>"; };
 		ED61C5A1199CD66400839C45 /* wscript */ = {isa = PBXFileReference; lastKnownFileType = text; path = wscript; sourceTree = "<group>"; };
 		ED69EBFF1A0D1A0000C5E7A0 /* wscript */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = wscript; path = ../wscript; sourceTree = "<group>"; };
+		ED6A1BDD1DB3D5990001A515 /* mptcp-scheduler.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "mptcp-scheduler.cc"; sourceTree = "<group>"; };
 		ED6E21E21C5D136F00028B56 /* tcp-cong-avoid-test.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-cong-avoid-test.cc"; sourceTree = "<group>"; };
 		ED6E21E31C5D136F00028B56 /* tcp-cong-avoid-test.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "tcp-cong-avoid-test.h"; sourceTree = "<group>"; };
 		ED6E21E41C5D136F00028B56 /* tcp-datasentcb-test.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "tcp-datasentcb-test.cc"; sourceTree = "<group>"; };
@@ -6149,6 +6151,7 @@
 				EDEB0E601D10A05B00F0C233 /* mptcp-scheduler-round-robin.cc */,
 				EDEB0E611D10A05B00F0C233 /* mptcp-scheduler-round-robin.h */,
 				EDEB0E621D10A05B00F0C233 /* mptcp-scheduler.h */,
+				ED6A1BDD1DB3D5990001A515 /* mptcp-scheduler.cc */,
 				EDC1D8471D58F11C00DD1D64 /* mptcp-socket-factory.cc */,
 				EDC1D8481D58F11C00DD1D64 /* mptcp-socket-factory.h */,
 				EDEB0E651D10A05B00F0C233 /* mptcp-socket.h */,
@@ -10784,6 +10787,7 @@
 				ED71413E1D3E955900BAEE7A /* mptcp-meta-socket.cc in Sources */,
 				ED7C6C48199D2257009165B6 /* udp-socket-factory-impl.cc in Sources */,
 				ED7C6C45199D2257009165B6 /* tcp-socket-factory-impl.cc in Sources */,
+				ED6A1BDE1DB3D5990001A515 /* mptcp-scheduler.cc in Sources */,
 				ED4DB8561D0C803F00635C71 /* tcp-yeah.cc in Sources */,
 				ED7C6C41199D2257009165B6 /* pending-data.cc in Sources */,
 				ED7C6C42199D2257009165B6 /* rtt-estimator.cc in Sources */,
