@@ -1086,11 +1086,7 @@ MpTcpMetaSocket::SendPendingData()
       break;
     }
     
-    uint32_t subflowWindow = subflow->AvailableWindow();
-    
-    uint32_t length = std::min(subflowWindow, dataToSend);
-    // For now we limit ourselves to a per packet length
-    length = std::min(length, subflow->GetSegSize());
+    uint32_t length = m_scheduler->GetSendSizeForSubflow(subflow, subflow->GetSegSize(), dataToSend);
     
     //Create the DSN->SSN mapping in the subflow
     Ptr<MpTcpMapping> mapping = subflow->AddLooseMapping(m_nextTxSequence, length);

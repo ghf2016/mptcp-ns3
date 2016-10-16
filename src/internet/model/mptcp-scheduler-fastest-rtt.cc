@@ -25,10 +25,11 @@
 #include "ns3/mptcp-meta-socket.h"
 #include "ns3/log.h"
 
-NS_LOG_COMPONENT_DEFINE("MpTcpSchedulerFastestRTT");
-
 namespace ns3
 {
+ 
+NS_LOG_COMPONENT_DEFINE("MpTcpSchedulerFastestRTT");
+NS_OBJECT_ENSURE_REGISTERED(MpTcpSchedulerFastestRTT);
   
 TypeId
 MpTcpSchedulerFastestRTT::GetTypeId (void)
@@ -55,10 +56,8 @@ MpTcpSchedulerFastestRTT::~MpTcpSchedulerFastestRTT (void)
 Ptr<MpTcpSubflow>
 MpTcpSchedulerFastestRTT::GetAvailableControlSubflow()
 {
-  NS_ASSERT(m_metaSock->GetNActiveSubflows() > 0 );
+  NS_ASSERT(m_metaSock->GetNActiveSubflows() > 0);
   return  m_metaSock->GetActiveSubflow(0);
-  //  m_lastUsedFlowId = (m_lastUsedFlowId + 1) % m_metaSock->GetNActiveSubflows();
-  //  return m_metaSock->GetSubFlow(m_lastUsedFlowId);
 }
   
 Ptr<MpTcpSubflow> MpTcpSchedulerFastestRTT::GetAvailableSubflow (uint32_t dataToSend, uint32_t metaWindow)

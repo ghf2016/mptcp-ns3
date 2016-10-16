@@ -22,18 +22,10 @@
 #ifndef MPTCP_SCHEDULER_ROUND_ROBIN_H
 #define MPTCP_SCHEDULER_ROUND_ROBIN_H
 
-
 #include "ns3/mptcp-scheduler.h"
-#include "ns3/object.h"
-#include "ns3/ptr.h"
-#include <vector>
-#include <list>
 
 namespace ns3
 {
-
-class MpTcpMetaSocket;
-class MpTcpSubflow;
 
 class MpTcpSchedulerRoundRobin
 //: public Object

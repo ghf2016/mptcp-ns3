@@ -25,10 +25,13 @@
 #include "ns3/mptcp-socket-base.h"
 #include "ns3/log.h"
 
-NS_LOG_COMPONENT_DEFINE("MpTcpSchedulerRoundRobin");
+
 
 namespace ns3
 {
+  
+NS_LOG_COMPONENT_DEFINE("MpTcpSchedulerRoundRobin");
+NS_OBJECT_ENSURE_REGISTERED(MpTcpSchedulerRoundRobin);
 
 TypeId
 MpTcpSchedulerRoundRobin::GetTypeId (void)

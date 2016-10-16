@@ -20,13 +20,7 @@
 #ifndef MPTCP_SCHEDULER_H
 #define MPTCP_SCHEDULER_H
 
-
-#include <stdint.h>
-#include "ns3/ptr.h"
 #include "ns3/object.h"
-#include "ns3/sequence-number.h"
-#include <utility>
-
 
 namespace ns3
 {
@@ -34,7 +28,6 @@ namespace ns3
 using namespace std;
 
 class MpTcpMetaSocket;
-class MpTcpMapping;
 class MpTcpSubflow;
 
 /**
@@ -50,17 +43,12 @@ class MpTcpScheduler : public Object
 
 public:
 
-  MpTcpScheduler () : m_metaSock(0)
-  {
-  }
-  
-  virtual ~MpTcpScheduler() {}
+  MpTcpScheduler ();
+  virtual ~MpTcpScheduler();
 
-  virtual void SetMeta(Ptr<MpTcpMetaSocket> metaSock)
-  {
-    NS_ASSERT(metaSock);
-    m_metaSock = metaSock;
-  }
+  virtual void SetMeta(Ptr<MpTcpMetaSocket> metaSock);
+  
+  uint32_t GetSendSizeForSubflow(Ptr<MpTcpSubflow> subflow, uint32_t segSize, uint32_t dataToSend);
   
   virtual Ptr<MpTcpSubflow> GetAvailableSubflow (uint32_t dataToSend, uint32_t metaWindow) = 0;
   

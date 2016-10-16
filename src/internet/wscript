@@ -168,6 +168,7 @@ def build(bld):
         'model/mptcp-crypto.cc',
         'model/mptcp-meta-socket.cc',
         'model/mptcp-subflow.cc',
+        'model/mptcp-scheduler.cc',
         'model/mptcp-scheduler-round-robin.cc',
         'model/mptcp-scheduler-fastest-rtt.cc',
         'model/mptcp-id-manager.cc',

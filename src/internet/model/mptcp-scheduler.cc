@@ -1,6 +1,5 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
- * Copyright (c) 2015 University of Sussex
  * Copyright (c) 2015 Université Pierre et Marie Curie (UPMC)
  *
  * This program is free software; you can redistribute it and/or modify
@@ -16,39 +15,40 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author:  Matthieu Coudron <matthieu.coudron@lip6.fr>
- *          Morteza Kheirkhah <m.kheirkhah@sussex.ac.uk>
+ * Author: Matthieu Coudron <matthieu.coudron@lip6.fr>
  */
-#ifndef MPTCP_SCHEDULER_FASTEST_RTT_H
-#define MPTCP_SCHEDULER_FASTEST_RTT_H
 
-
-#include "ns3/mptcp-scheduler.h"
+#include "mptcp-scheduler.h"
+#include "mptcp-meta-socket.h"
+#include "mptcp-subflow.h"
 
 namespace ns3
 {
 
-class MpTcpSchedulerFastestRTT : public MpTcpScheduler
-{
-
-public:
-  static TypeId GetTypeId (void);
-
-  MpTcpSchedulerFastestRTT();
-  virtual ~MpTcpSchedulerFastestRTT ();
-
-  /**
-   Return available subflow with lowest RTT
-   */
-  virtual Ptr<MpTcpSubflow> GetAvailableControlSubflow() override;
+NS_OBJECT_ENSURE_REGISTERED(MpTcpScheduler);
   
-  virtual Ptr<MpTcpSubflow> GetAvailableSubflow (uint32_t dataToSend, uint32_t metaWindow) override;
+MpTcpScheduler::MpTcpScheduler () : m_metaSock(0)
+{
+}
 
-protected:
-//  uint8_t  m_lastUsedFlowId;        //!< keep track of last used subflow
-};
+MpTcpScheduler::~MpTcpScheduler()
+{
+}
 
+void MpTcpScheduler::SetMeta(Ptr<MpTcpMetaSocket> metaSock)
+{
+  NS_ASSERT(metaSock);
+  m_metaSock = metaSock;
+}
 
-} // end of 'ns3'
-
-#endif /* MPTCP_SCHEDULER_ROUND_ROBIN_H */
+uint32_t MpTcpScheduler::GetSendSizeForSubflow(Ptr<MpTcpSubflow> subflow, uint32_t segSize, uint32_t dataToSend)
+{
+  uint32_t subflowWindow = subflow->AvailableWindow();
+  
+  uint32_t length = std::min(subflowWindow, dataToSend);
+  // For now we limit ourselves to a per packet length
+  length = std::min(length, segSize);
+  
+  return length;
+}
+}
