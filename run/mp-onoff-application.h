@@ -1,9 +1,8 @@
 //
-//  mp-onoff-application.hpp
+//  mp-onoff-application.h
 //  ns3
 //
 //  Created by Lynne Salameh on 21/7/16.
-//  Copyright © 2016 University College London. All rights reserved.
 //
 
 #ifndef MP_ONOFF_APPLICATION_H

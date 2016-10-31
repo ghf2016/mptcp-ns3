@@ -3,7 +3,6 @@
 //  ns3
 //
 //  Created by Lynne Salameh on 21/7/16.
-//  Copyright © 2016 University College London. All rights reserved.
 //
 
 #include "mp-onoff-application.h"

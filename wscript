@@ -802,6 +802,9 @@ def build(bld):
     # process subfolders from here
     bld.recurse('src')
 
+    #lynne addition, build the run directory for mptcp tests, remove later
+    bld.recurse('run')
+
     # If modules have been enabled, then set lists of enabled modules
     # and enabled module test libraries.
     if env['NS3_ENABLED_MODULES']:

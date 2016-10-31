@@ -277,7 +277,7 @@ MpTcpMetaSocket::GetTypeId(void)
                  MakeTypeIdChecker ())
   .AddAttribute ("Scheduler",
                  "How to generate the mappings",
-                 TypeIdValue (MpTcpScheduler::GetTypeId ()),
+                 TypeIdValue (MpTcpSchedulerRoundRobin::GetTypeId ()),
                  MakeTypeIdAccessor (&MpTcpMetaSocket::m_schedulerTypeId),
                  MakeTypeIdChecker ())
   .AddAttribute ("TxBuffer",

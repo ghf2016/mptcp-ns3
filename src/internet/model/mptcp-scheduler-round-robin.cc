@@ -22,7 +22,6 @@
  */
 #include "ns3/mptcp-scheduler-round-robin.h"
 #include "ns3/mptcp-subflow.h"
-#include "ns3/mptcp-socket-base.h"
 #include "ns3/log.h"
 
 

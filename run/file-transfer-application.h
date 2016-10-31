@@ -3,7 +3,6 @@
 //  ns3
 //
 //  Created by Lynne Salameh on 19/5/16.
-//  Copyright © 2016 University College London. All rights reserved.
 //
 
 #ifndef FileTransferApplication_H

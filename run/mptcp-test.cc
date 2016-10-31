@@ -3,7 +3,6 @@
 //  ns3
 //
 //  Created by Lynne Salameh on 17/6/16.
-//  Copyright © 2016 University College London. All rights reserved.
 //
 
 #include <stdio.h>
