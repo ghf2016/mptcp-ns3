@@ -369,15 +369,14 @@ void SetConfigDefaults (string linkRate, string linkDelay, uint32_t interfaces,
 
 void EnableLogging ()
 {
-  //LogComponentEnable("MptcpCongestionOps", LOG_LEVEL_ALL);
-  //LogComponentEnable("MptcpL4Protocol", LOG_LEVEL_ALL);
-  //LogComponentEnable("MptcpSocketBase", LOG_LEVEL_ALL);
-  //LogComponentEnable("MptcpMetaSocket", LOG_LEVEL_ALL);
-  //LogComponentEnable("MpTcpSubflow", LOG_LEVEL_ALL);
+  /*LogComponentEnable("TcpL4Protocol", LOG_LEVEL_ALL);
+  LogComponentEnable("TcpSocketBase", LOG_LEVEL_ALL);
+  LogComponentEnable("MpTcpMetaSocket", LOG_LEVEL_ALL);
+  LogComponentEnable("MpTcpSubflow", LOG_LEVEL_ALL);
   
-  //LogComponentEnable ("Ipv4L3Protocol", LOG_LEVEL_ALL);
-  //LogComponentEnable("PointToPointNetDevice", LOG_LEVEL_ALL);
-  //LogComponentEnable ("Ipv4EndPoint", LOG_LEVEL_ALL);
+  LogComponentEnable ("Ipv4L3Protocol", LOG_LEVEL_ALL);
+  LogComponentEnable("PointToPointNetDevice", LOG_LEVEL_ALL);
+  LogComponentEnable ("Ipv4EndPoint", LOG_LEVEL_ALL);*/
 }
 
 InternetStackHelper GetInternetStackHelper ()
