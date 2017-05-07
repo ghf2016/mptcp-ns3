@@ -121,7 +121,7 @@ MpTcpLia::IncreaseWindow (Ptr<TcpSocketState> tcb, uint32_t segmentsAcked)
   else
     {
       Ptr<MpTcpMetaSocket> metaSock = DynamicCast<MpTcpMetaSocket>(tcb->m_socket);
-      uint32_t totalCwnd = metaSock->GetTotalCwnd ();
+      double totalCwnd = metaSock->GetTotalCwnd ();
 
       m_alpha = ComputeAlpha (metaSock, tcb);
       double alpha_scale = 1;
@@ -131,12 +131,12 @@ MpTcpLia::IncreaseWindow (Ptr<TcpSocketState> tcb, uint32_t segmentsAcked)
 //                 alpha_scale * cwnd_total              cwnd_i
     
     double adder = std::min (m_alpha* tcb->m_segmentSize * tcb->m_segmentSize / (totalCwnd* alpha_scale),
-        static_cast<double>((tcb->m_segmentSize * tcb->m_segmentSize) / tcb->m_cWnd.Get ()));
+        static_cast<double>(tcb->m_segmentSize * tcb->m_segmentSize) / tcb->m_cWnd.Get ());
       
-    // Congestion avoidance mode, increase by (segSize*segSize)/cwnd. (RFC2581, sec.3.1)
+      // Congestion avoidance mode, increase by (segSize*segSize)/cwnd. (RFC2581, sec.3.1)
       // To increase cwnd for one segSize per RTT, it should be (ackBytes*segSize)/cwnd
 
-//    adder = std::max (1.0, adder);
+      adder = std::max (1.0, adder);
       tcb->m_cWnd += static_cast<uint32_t> (adder);
       NS_LOG_INFO ("In CongAvoid, updated tcb " << tcb << " cwnd to " << tcb->m_cWnd << " ssthresh " << tcb->m_ssThresh);
     }
